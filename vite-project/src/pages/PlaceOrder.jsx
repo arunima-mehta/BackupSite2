@@ -9,7 +9,7 @@ import { toast } from 'react-toastify'
 
 const PlaceOrder = () => {
   const [method,setMethod] = useState('cod');
-  const {navigate, backendUrl, token, cartItems, setCartItems, getCartAmount, delivery_fee, products} = useContext(ShopContext);
+  const {navigate, backendUrl, token, cartItems, setCartItems, getCartAmount, delivery_fee, products, clearCart} = useContext(ShopContext);
   const [formData, setFormData] = useState({
     firstName:'',
     lastName:'',
@@ -81,11 +81,13 @@ const PlaceOrder = () => {
       switch (method){
         //API calls for cod
         case 'cod':
-          
+          console.log('🛒 Placing COD order:', orderData);
           const response = await axios.post(backendUrl +  '/api/order/place',orderData,{headers:{token}})
+          console.log('📝 COD order response:', response.data);
           
           if (response.data.success){
-            setCartItems({}) 
+            console.log('✅ COD order successful, clearing cart');
+            clearCart() 
             navigate('/orders')
           } else {
             toast.error(response.data.message)

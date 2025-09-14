@@ -148,19 +148,23 @@ const ShopContextProvider = (props) => {
 
     const getUserCart = async (token) => {
         try {
+            console.log('📦 Getting user cart from database...');
             const response = await axios.post(backendUrl + '/api/cart/get',{}, {headers:{token}})
             if (response.data.success) {
+                console.log('📦 Cart data from database:', response.data.cartData);
                 setCartItems(response.data.cartData)
                 // Also save to localStorage as backup
                 localStorage.setItem('cartItems', JSON.stringify(response.data.cartData));
+                console.log('📦 Cart updated from database');
             }
         } 
         catch (error) {
-            console.log(error);
+            console.log('❌ Error getting cart from database:', error);
             toast.error(error.message)
             // If database fails, try to load from localStorage
             const savedCart = localStorage.getItem('cartItems');
             if (savedCart) {
+                console.log('📦 Loading cart from localStorage fallback:', JSON.parse(savedCart));
                 setCartItems(JSON.parse(savedCart));
             }
         }
@@ -315,12 +319,21 @@ const ShopContextProvider = (props) => {
         return Object.keys(wishlistItems).length;
     }
 
+    // Function to properly clear cart (both state and localStorage)
+    const clearCart = () => {
+        console.log('🧹 Clearing cart - Before:', cartItems);
+        console.log('🧹 Clearing localStorage cartItems');
+        setCartItems({});
+        localStorage.removeItem('cartItems');
+        console.log('🧹 Cart cleared successfully');
+    }
+
     const value = { 
         products, currency, delivery_fee,
         search, setSearch, showSearch, setShowSearch,
         cartItems, addToCart,setCartItems, getCartCount, updateQuantity, getCartAmount, navigate, backendUrl,
         setToken, token, wishlistItems, addToWishlist, removeFromWishlist, isInWishlist, getWishlistCount,
-        logout, userEmail, getUserWishlist
+        logout, userEmail, getUserWishlist, clearCart
     };
 
     return (

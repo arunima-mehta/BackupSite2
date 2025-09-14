@@ -8,6 +8,17 @@ import razorpay from 'razorpay'
 const currency = 'inr'
 const deliveryCharge = 10
 
+// Helper function to add order to user's orders array
+const addOrderToUser = async (userId, orderData) => {
+    try {
+        await userModel.findByIdAndUpdate(userId, {
+            $push: { orders: orderData }
+        });
+    } catch (error) {
+        console.log("Error adding order to user:", error);
+    }
+}
+
 
 //gateway initialize
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
@@ -120,9 +131,11 @@ const placeOrderStripe = async (req,res) => {
 
 const verifyStripe = async(req, res) =>{
      const { orderId, success, userId } = req.body
+     console.log('🔍 Stripe verification request:', { orderId, success, userId });
 
      try {
         if (success === "true") {
+            console.log('✅ Payment successful, updating order and clearing cart');
             await orderModel.findByIdAndUpdate(orderId, {payment:true});
             
             // Get the order details to add to user
@@ -140,10 +153,17 @@ const verifyStripe = async(req, res) =>{
                 });
             }
             
+            console.log('🧹 Clearing cart in database for user:', userId);
             await userModel.findByIdAndUpdate(userId, {cartData: {}})
+            
+            // Verify cart was cleared
+            const updatedUser = await userModel.findById(userId);
+            console.log('📦 User cart after clearing:', updatedUser.cartData);
+            
             res.json({success:true});
             
         } else{
+            console.log('❌ Payment failed, deleting order');
             await orderModel.findByIdAndDelete(orderId)
             res.json({success:false});
         }
