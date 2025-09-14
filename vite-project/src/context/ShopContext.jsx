@@ -7,7 +7,7 @@ export const ShopContext =  createContext();
 
 const ShopContextProvider = (props) => { 
 
-    const currency = '$';
+    const currency = '₹';
     const delivery_fee = 10;
     const backendUrl = import.meta.env.VITE_BACKEND_URL
     const [search, setSearch] = useState('');
@@ -19,16 +19,9 @@ const ShopContextProvider = (props) => {
     }); 
     const [products, setProducts] = useState([]); 
     const [token, setToken] = useState(localStorage.getItem('token') || '');
+    const [userEmail, setUserEmail] = useState('');
     const navigate = useNavigate();
-    const [wishlistItems, setWishlistItems] = useState(() => {
-        // Initialize wishlist from localStorage only if user is logged in
-        const token = localStorage.getItem('token');
-        if (token) {
-            const savedWishlist = localStorage.getItem('wishlistItems');
-            return savedWishlist ? JSON.parse(savedWishlist) : {};
-        }
-        return {};
-    });
+    const [wishlistItems, setWishlistItems] = useState({});
 
     const addToCart = async (itemId, size, subCategory) => {
         if (!token) {
@@ -170,6 +163,48 @@ const ShopContextProvider = (props) => {
         }
     }
 
+    // Get user profile to get email for user-specific wishlist storage
+    const getUserProfile = async (token) => {
+        try {
+            const response = await axios.post(backendUrl + '/api/user/profile', {}, {headers:{token}})
+            if (response.data.success) {
+                setUserEmail(response.data.userData.email);
+                // Load user-specific wishlist
+                loadUserWishlist(response.data.userData.email);
+            }
+        } 
+        catch (error) {
+            console.log(error);
+            // If we can't get user profile, use token as identifier
+            const tokenHash = btoa(token).slice(0, 8); // Simple hash of token
+            loadUserWishlist(tokenHash);
+        }
+    }
+
+    // Load wishlist for specific user
+    const loadUserWishlist = (userIdentifier) => {
+        const userWishlistKey = `wishlistItems_${userIdentifier}`;
+        const savedWishlist = localStorage.getItem(userWishlistKey);
+        if (savedWishlist) {
+            setWishlistItems(JSON.parse(savedWishlist));
+        } else {
+            setWishlistItems({});
+        }
+    }
+
+    // Save wishlist for specific user
+    const saveUserWishlist = (wishlistData) => {
+        if (userEmail) {
+            const userWishlistKey = `wishlistItems_${userEmail}`;
+            localStorage.setItem(userWishlistKey, JSON.stringify(wishlistData));
+        } else if (token) {
+            // Fallback to token-based storage
+            const tokenHash = btoa(token).slice(0, 8);
+            const userWishlistKey = `wishlistItems_${tokenHash}`;
+            localStorage.setItem(userWishlistKey, JSON.stringify(wishlistData));
+        }
+    }
+
     useEffect(() => {
         getProductsData()
     }, [])
@@ -177,14 +212,11 @@ const ShopContextProvider = (props) => {
     useEffect(() => {
         if (token) {
             getUserCart(token);
-            // Load wishlist when user logs in
-            const savedWishlist = localStorage.getItem('wishlistItems');
-            if (savedWishlist) {
-                setWishlistItems(JSON.parse(savedWishlist));
-            }
+            getUserProfile(token);
         } else {
-            // Clear wishlist when user logs out
+            // Clear wishlist and user data when user logs out
             setWishlistItems({});
+            setUserEmail('');
         }
     }, [token])
 
@@ -218,10 +250,11 @@ const ShopContextProvider = (props) => {
     const logout = () => {
         setToken('');
         setCartItems({});
-        setWishlistItems({}); // Clear wishlist on logout
+        setWishlistItems({}); // Clear wishlist from state (but not from localStorage)
+        setUserEmail(''); // Clear user email
         localStorage.removeItem('token');
         localStorage.removeItem('cartItems'); // Clear cart on logout
-        localStorage.removeItem('wishlistItems'); // Clear wishlist on logout
+        // Don't remove user-specific wishlist from localStorage - keep it for when user logs back in
         navigate('/login');
     };
 
@@ -237,8 +270,8 @@ const ShopContextProvider = (props) => {
                 ...prev,
                 [itemId]: true
             };
-            // Save to localStorage only if user is logged in
-            localStorage.setItem('wishlistItems', JSON.stringify(newWishlistItems));
+            // Save to user-specific localStorage
+            saveUserWishlist(newWishlistItems);
             return newWishlistItems;
         });
     };
@@ -253,8 +286,8 @@ const ShopContextProvider = (props) => {
         setWishlistItems((prev) => {
             const newItems = { ...prev };
             delete newItems[itemId];
-            // Save to localStorage
-            localStorage.setItem('wishlistItems', JSON.stringify(newItems));
+            // Save to user-specific localStorage
+            saveUserWishlist(newItems);
             return newItems;
         });
     };

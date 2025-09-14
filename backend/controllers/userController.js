@@ -7,6 +7,18 @@ const createToken = (id) => {
     return jwt.sign({id}, process.env.JWT_SECRET)
 }
 
+// Route to get user profile
+const getUserProfile = async (req, res) => {
+    try {
+        const { userId } = req.body;
+        const userData = await userModel.findById(userId).select('-password');
+        res.json({success:true, userData})
+    } catch (error) {
+        console.log(error);
+        res.json({success:false, message:error.message})
+    }
+}
+
 // Route for user login
 const loginUser = async (req, res) => {
     try {
@@ -102,4 +114,4 @@ const adminLogin = async (req, res) => {
 
 }
 
-export {loginUser, registerUser, adminLogin}
+export {loginUser, registerUser, adminLogin, getUserProfile}
