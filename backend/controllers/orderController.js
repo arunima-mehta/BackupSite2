@@ -35,6 +35,18 @@ const placeOrder = async (req,res) => {
         const newOrder = new orderModel(orderData)
         await newOrder.save()
 
+        // Add order to user's orders array
+        await addOrderToUser(userId, {
+            orderId: newOrder._id,
+            items,
+            amount,
+            address,
+            paymentMethod: "COD",
+            payment: false,
+            status: "Order Placed",
+            date: Date.now()
+        });
+
         await userModel.findByIdAndUpdate(userId,{cartData:{}})
 
         res.json({success:true, message: "Order Placed!"})
@@ -112,6 +124,22 @@ const verifyStripe = async(req, res) =>{
      try {
         if (success === "true") {
             await orderModel.findByIdAndUpdate(orderId, {payment:true});
+            
+            // Get the order details to add to user
+            const orderDetails = await orderModel.findById(orderId);
+            if (orderDetails) {
+                await addOrderToUser(userId, {
+                    orderId: orderDetails._id,
+                    items: orderDetails.items,
+                    amount: orderDetails.amount,
+                    address: orderDetails.address,
+                    paymentMethod: "Stripe",
+                    payment: true,
+                    status: "Order Placed",
+                    date: orderDetails.date
+                });
+            }
+            
             await userModel.findByIdAndUpdate(userId, {cartData: {}})
             res.json({success:true});
             
@@ -173,6 +201,22 @@ const  verifyRazorpay = async (req,res) => {
 
         if(orderInfo.status=='paid'){
             await orderModel.findByIdAndUpdate(orderInfo.receipt,{payment:true})
+            
+            // Get the order details to add to user
+            const orderDetails = await orderModel.findById(orderInfo.receipt);
+            if (orderDetails) {
+                await addOrderToUser(userId, {
+                    orderId: orderDetails._id,
+                    items: orderDetails.items,
+                    amount: orderDetails.amount,
+                    address: orderDetails.address,
+                    paymentMethod: "Razorpay",
+                    payment: true,
+                    status: "Order Placed",
+                    date: orderDetails.date
+                });
+            }
+            
             await userModel.findByIdAndUpdate(userId,{cartData:{}})
             res.json({success:true, message:"Payment Successful"})
         } else{

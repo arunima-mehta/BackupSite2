@@ -63,14 +63,17 @@ const ShopContextProvider = (props) => {
 
         if (token) {
             try {
-
-                await axios.post(backendUrl + '/api/cart/add', {itemId, size: finalSize}, {headers:{token}})
+                console.log('Adding to cart:', { itemId, size: finalSize, token: token ? 'present' : 'missing' });
+                const response = await axios.post(backendUrl + '/api/cart/add', {itemId, size: finalSize}, {headers:{token}});
+                console.log('Cart add response:', response.data);
                 
             } 
             catch (error) {
-                console.log(error);
+                console.log('Cart add error:', error);
                 toast.error(error.message)
             }
+        } else {
+            console.log('No token available, cart data only saved locally');
         }
     }
 
@@ -169,39 +172,28 @@ const ShopContextProvider = (props) => {
             const response = await axios.post(backendUrl + '/api/user/profile', {}, {headers:{token}})
             if (response.data.success) {
                 setUserEmail(response.data.userData.email);
-                // Load user-specific wishlist
-                loadUserWishlist(response.data.userData.email);
+                // Load user wishlist from database
+                getUserWishlist(token);
             }
         } 
         catch (error) {
             console.log(error);
-            // If we can't get user profile, use token as identifier
-            const tokenHash = btoa(token).slice(0, 8); // Simple hash of token
-            loadUserWishlist(tokenHash);
+            // If we can't get user profile, still try to load wishlist
+            getUserWishlist(token);
         }
     }
 
-    // Load wishlist for specific user
-    const loadUserWishlist = (userIdentifier) => {
-        const userWishlistKey = `wishlistItems_${userIdentifier}`;
-        const savedWishlist = localStorage.getItem(userWishlistKey);
-        if (savedWishlist) {
-            setWishlistItems(JSON.parse(savedWishlist));
-        } else {
+    // Get user wishlist from database
+    const getUserWishlist = async (token) => {
+        try {
+            const response = await axios.post(backendUrl + '/api/wishlist/get', {}, {headers:{token}})
+            if (response.data.success) {
+                setWishlistItems(response.data.wishlistData || {});
+            }
+        } 
+        catch (error) {
+            console.log(error);
             setWishlistItems({});
-        }
-    }
-
-    // Save wishlist for specific user
-    const saveUserWishlist = (wishlistData) => {
-        if (userEmail) {
-            const userWishlistKey = `wishlistItems_${userEmail}`;
-            localStorage.setItem(userWishlistKey, JSON.stringify(wishlistData));
-        } else if (token) {
-            // Fallback to token-based storage
-            const tokenHash = btoa(token).slice(0, 8);
-            const userWishlistKey = `wishlistItems_${tokenHash}`;
-            localStorage.setItem(userWishlistKey, JSON.stringify(wishlistData));
         }
     }
 
@@ -246,50 +238,69 @@ const ShopContextProvider = (props) => {
         }
     }
 
-    // Add logout function to clear wishlist when user logs out
+    // Add logout function to clear state when user logs out
     const logout = () => {
         setToken('');
         setCartItems({});
-        setWishlistItems({}); // Clear wishlist from state (but not from localStorage)
+        setWishlistItems({}); // Clear wishlist from state (but data remains in database)
         setUserEmail(''); // Clear user email
         localStorage.removeItem('token');
         localStorage.removeItem('cartItems'); // Clear cart on logout
-        // Don't remove user-specific wishlist from localStorage - keep it for when user logs back in
+        // Wishlist data remains in database and will reload when user logs back in
         navigate('/login');
     };
 
-    const addToWishlist = (itemId) => {
+    const addToWishlist = async (itemId) => {
         if (!token) {
             toast.error('Log In to wishlist a product');
             navigate('/login');
             return;
         }
         
-        setWishlistItems((prev) => {
-            const newWishlistItems = {
-                ...prev,
-                [itemId]: true
-            };
-            // Save to user-specific localStorage
-            saveUserWishlist(newWishlistItems);
-            return newWishlistItems;
-        });
+        try {
+            console.log('Adding to wishlist:', { itemId, token: token ? 'present' : 'missing' });
+            const response = await axios.post(backendUrl + '/api/wishlist/add', {itemId}, {headers:{token}});
+            console.log('Wishlist add response:', response.data);
+            if (response.data.success) {
+                // Update local state
+                setWishlistItems((prev) => ({
+                    ...prev,
+                    [itemId]: true
+                }));
+                toast.success('Added to wishlist!');
+            } else {
+                toast.error(response.data.message);
+            }
+        } catch (error) {
+            console.log('Wishlist add error:', error);
+            toast.error('Failed to add to wishlist');
+        }
     };
 
-    const removeFromWishlist = (itemId) => {
+    const removeFromWishlist = async (itemId) => {
         if (!token) {
             toast.error('Log In to manage your wishlist');
             navigate('/login');
             return;
         }
         
-        setWishlistItems((prev) => {
-            const newItems = { ...prev };
-            delete newItems[itemId];
-            // Save to user-specific localStorage
-            saveUserWishlist(newItems);
-            return newItems;
-        });
+        try {
+            const response = await axios.post(backendUrl + '/api/wishlist/remove', {itemId}, {headers:{token}});
+            if (response.data.success) {
+                // Update local state
+                setWishlistItems((prev) => {
+                    const newItems = { ...prev };
+                    delete newItems[itemId];
+                    return newItems;
+                });
+                toast.success('Removed from wishlist!');
+            } else {
+                toast.error(response.data.message);
+            }
+        } catch (error) {
+            console.log(error);
+            toast.error('Failed to remove from wishlist');
+        }
     };
 
     const isInWishlist = (itemId) => {
@@ -309,7 +320,7 @@ const ShopContextProvider = (props) => {
         search, setSearch, showSearch, setShowSearch,
         cartItems, addToCart,setCartItems, getCartCount, updateQuantity, getCartAmount, navigate, backendUrl,
         setToken, token, wishlistItems, addToWishlist, removeFromWishlist, isInWishlist, getWishlistCount,
-        logout
+        logout, userEmail, getUserWishlist
     };
 
     return (

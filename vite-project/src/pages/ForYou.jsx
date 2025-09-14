@@ -3,6 +3,7 @@ import { ShopContext } from '../context/ShopContext'
 import Title from '../components/Title'
 import ProductItem from '../components/ProductItem'
 import RecommendationEngine from '../utils/recommendationEngine'
+import axios from 'axios'
 
 const ForYou = () => {
     const { 
@@ -11,25 +12,66 @@ const ForYou = () => {
         wishlistItems, 
         token,
         navigate,
-        currency
+        currency,
+        backendUrl
     } = useContext(ShopContext);
 
     const [personalizedProducts, setPersonalizedProducts] = useState([]);
     const [revisitFavorites, setRevisitFavorites] = useState([]);
     const [userActivityProducts, setUserActivityProducts] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [userActivityData, setUserActivityData] = useState({
+        cartItems: {},
+        wishlistItems: {},
+        orders: []
+    });
+
+    // Fetch user activity data from database
+    const fetchUserActivityData = async () => {
+        if (!token) {
+            setUserActivityData({
+                cartItems: {},
+                wishlistItems: {},
+                orders: []
+            });
+            return;
+        }
+
+        try {
+            const response = await axios.post(backendUrl + '/api/user/activity', {}, {
+                headers: { token }
+            });
+
+            if (response.data.success) {
+                setUserActivityData(response.data.activityData);
+            }
+        } catch (error) {
+            console.log('Error fetching user activity:', error);
+            // Fallback to current context data
+            setUserActivityData({
+                cartItems: cartItems || {},
+                wishlistItems: wishlistItems || {},
+                orders: []
+            });
+        }
+    };
 
     // Get user's activity data
     const getUserActivityData = () => {
-        const cartProductIds = Object.keys(cartItems);
-        const wishlistProductIds = Object.keys(wishlistItems);
+        const cartProductIds = Object.keys(userActivityData.cartItems);
+        const wishlistProductIds = Object.keys(userActivityData.wishlistItems);
         
-        // Get categories and subcategories from user's cart and wishlist
+        // Extract product IDs from orders
+        const orderProductIds = userActivityData.orders.flatMap(order => 
+            order.items ? order.items.map(item => item._id) : []
+        );
+        
+        // Get categories and subcategories from user's cart, wishlist, and orders
         const userCategories = new Set();
         const userSubcategories = new Set();
         const excludeProductIds = new Set([...cartProductIds, ...wishlistProductIds]);
 
-        [...cartProductIds, ...wishlistProductIds].forEach(productId => {
+        [...cartProductIds, ...wishlistProductIds, ...orderProductIds].forEach(productId => {
             const product = products.find(p => p._id === productId);
             if (product) {
                 userCategories.add(product.category);
@@ -40,7 +82,8 @@ const ForYou = () => {
         return {
             userCategories: Array.from(userCategories),
             userSubcategories: Array.from(userSubcategories),
-            excludeProductIds: Array.from(excludeProductIds)
+            excludeProductIds: Array.from(excludeProductIds),
+            orderProductIds
         };
     };
 
@@ -58,9 +101,9 @@ const ForYou = () => {
 
         // Prepare user activity data for recommendation engine
         const userActivity = {
-            cartItems,
-            wishlistItems,
-            orderHistory: [] // This could be fetched from API in the future
+            cartItems: userActivityData.cartItems,
+            wishlistItems: userActivityData.wishlistItems,
+            orderHistory: userActivityData.orders
         };
 
         // Create recommendation engine instance
@@ -74,16 +117,18 @@ const ForYou = () => {
         });
 
         // Get products from user's wishlist for "Revisit Favorites"
-        const favoriteProducts = Object.keys(wishlistItems)
+        const favoriteProducts = Object.keys(userActivityData.wishlistItems)
             .map(id => products.find(p => p._id === id))
             .filter(product => product);
 
         // Get all user activity products (cart + wishlist + orders)
         const getAllUserActivityProducts = () => {
             const allActivityProductIds = new Set([
-                ...Object.keys(cartItems),
-                ...Object.keys(wishlistItems)
-                // Note: orders would be added here when order history is available
+                ...Object.keys(userActivityData.cartItems),
+                ...Object.keys(userActivityData.wishlistItems),
+                ...userActivityData.orders.flatMap(order => 
+                    order.items ? order.items.map(item => item._id) : []
+                )
             ]);
             
             return Array.from(allActivityProductIds)
@@ -99,9 +144,17 @@ const ForYou = () => {
 
     useEffect(() => {
         if (products.length > 0) {
+            fetchUserActivityData().then(() => {
+                generateRecommendations();
+            });
+        }
+    }, [products, token]);
+
+    useEffect(() => {
+        if (products.length > 0 && userActivityData) {
             generateRecommendations();
         }
-    }, [products, cartItems, wishlistItems, token]);
+    }, [userActivityData]);
 
     if (loading) {
         return (
@@ -221,8 +274,11 @@ const ForYou = () => {
                             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 gap-y-6">
                                 {userActivityProducts.map((item, index) => {
                                     // Determine the activity type for each product
-                                    const isInWishlist = Object.keys(wishlistItems).includes(item._id);
-                                    const isInCart = Object.keys(cartItems).includes(item._id);
+                                    const isInWishlist = Object.keys(userActivityData.wishlistItems).includes(item._id);
+                                    const isInCart = Object.keys(userActivityData.cartItems).includes(item._id);
+                                    const isInOrders = userActivityData.orders.some(order => 
+                                        order.items && order.items.some(orderItem => orderItem._id === item._id)
+                                    );
                                     
                                     return (
                                         <div key={index} className="relative">
@@ -244,6 +300,11 @@ const ForYou = () => {
                                                         🛒
                                                     </span>
                                                 )}
+                                                {isInOrders && (
+                                                    <span className="bg-green-500 text-white text-xs px-1.5 py-0.5 rounded-full">
+                                                        📦
+                                                    </span>
+                                                )}
                                             </div>
                                         </div>
                                     );
@@ -260,6 +321,10 @@ const ForYou = () => {
                                     <span className="bg-blue-500 text-white text-xs px-1.5 py-0.5 rounded-full">🛒</span>
                                     <span>In Cart</span>
                                 </div>
+                                <div className="flex items-center gap-2">
+                                    <span className="bg-green-500 text-white text-xs px-1.5 py-0.5 rounded-full">📦</span>
+                                    <span>Ordered</span>
+                                </div>
                             </div>
                         </div>
                     ) : (
@@ -275,7 +340,7 @@ const ForYou = () => {
                                     No Activity Yet
                                 </h3>
                                 <p className="text-gray-600 dark:text-gray-400 mb-6">
-                                    Explore products to unlock this section. Add items to your wishlist or cart to see them here.
+                                    Explore products to unlock this section. Add items to your wishlist, cart, or place orders to see them here.
                                 </p>
                                 <button 
                                     onClick={() => navigate('/collection')}

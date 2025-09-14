@@ -19,6 +19,28 @@ const getUserProfile = async (req, res) => {
     }
 }
 
+// Route to get user activity data for recommendations
+const getUserActivity = async (req, res) => {
+    try {
+        const { userId } = req.body;
+        const userData = await userModel.findById(userId).select('cartData wishlistData orders');
+        
+        if (userData) {
+            const activityData = {
+                cartItems: userData.cartData || {},
+                wishlistItems: userData.wishlistData || {},
+                orders: userData.orders || []
+            };
+            res.json({success:true, activityData});
+        } else {
+            res.json({success:false, message: "User not found"});
+        }
+    } catch (error) {
+        console.log(error);
+        res.json({success:false, message:error.message})
+    }
+}
+
 // Route for user login
 const loginUser = async (req, res) => {
     try {
@@ -78,7 +100,9 @@ const registerUser = async (req, res) => {
         const newUser = new userModel({
             name, 
             email, 
-            password: hashedPassword
+            password: hashedPassword,
+            cartData: {},
+            wishlistData: {}
         })
 
         const user = await newUser.save()
@@ -114,4 +138,4 @@ const adminLogin = async (req, res) => {
 
 }
 
-export {loginUser, registerUser, adminLogin, getUserProfile}
+export {loginUser, registerUser, adminLogin, getUserProfile, getUserActivity}

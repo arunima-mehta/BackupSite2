@@ -7,9 +7,16 @@ const addToCart = async (req,res) => {
     try {
 
         const {userId, itemId, size } = req.body
+        console.log('Cart add request:', { userId, itemId, size });
 
         const userData = await userModel.findById(userId)
+        if (!userData) {
+            console.log('User not found:', userId);
+            return res.json({success: false, message: "User not found"});
+        }
+        
         let cartData = await userData.cartData; 
+        console.log('Current cart data:', cartData);
 
         if (cartData[itemId]) {
             if (cartData[itemId][size]) {
@@ -25,7 +32,12 @@ const addToCart = async (req,res) => {
             cartData[itemId][size]=1
         }
 
+        console.log('Updated cart data:', cartData);
         await userModel.findByIdAndUpdate(userId, {cartData})
+        
+        // Verify the update
+        const verifyUser = await userModel.findById(userId);
+        console.log('Cart data after update:', verifyUser.cartData);
 
         res.json({success: true, message: "Added to Cart!"})
 
@@ -33,7 +45,7 @@ const addToCart = async (req,res) => {
         
     } 
     catch (error) {
-        console.log(error);
+        console.log('Cart add error:', error);
         res.json({success:false, message: error.message})
     }
 }
