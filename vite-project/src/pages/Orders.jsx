@@ -120,12 +120,14 @@ const Orders = () => {
                     }`}></p>
                     <p className='text-sm md:text-base'>{item.status}</p>
                   </div>
-                  <button 
-                    onClick={loadOrderData} 
-                    className='border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-medium rounded-sm hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors'
+                  <a 
+                    href="#"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className='border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-medium rounded-sm hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-300 inline-block'
                   >
                     Track Order
-                  </button>
+                  </a>
                 </div>
               </div>
             ))
