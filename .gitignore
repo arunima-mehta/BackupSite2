@@ -14,4 +14,10 @@ backend/.env
 vite-project/.env
 admin/.env
 
+# Ignore specific markdown files
+IMPLEMENTATION_SUMMARY.md
+ORDERS_INTEGRATION_README.md
+QUICK_START.md
+TEST_ORDERS_INTEGRATION.md
+VISUAL_LAYOUT_GUIDE.md
 
