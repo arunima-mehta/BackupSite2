@@ -1544,10 +1544,13 @@
                 notification.textContent = message;
                 document.body.appendChild(notification);
                 
+                // Completion notifications disappear after 2.5 seconds
+                const timeout = message.includes('completed successfully') ? 2500 : 3000;
+                
                 setTimeout(() => {
                     notification.style.opacity = '0';
                     setTimeout(() => notification.remove(), 300);
-                }, 3000);
+                }, timeout);
             },
 
             // Add a function to test individual movements
@@ -1889,7 +1892,20 @@
                     
                     if (cell.isStart) color = '#4ecca3';
                     else if (cell.isEnd) color = '#f95959';
-                    else if (cell.isItem) color = '#9b59b6';
+                    // Show ALL item locations UNLESS automation is running (selectedItem is set)
+                    else if (cell.isItem) {
+                        // During automation: only show current selected item
+                        // Initial state: show all purple squares
+                        if (window.selectedItem) {
+                            // Automation mode - only show selected item
+                            if (cell.itemType === window.selectedItem.toLowerCase()) {
+                                color = '#9b59b6';
+                            }
+                        } else {
+                            // Initial/normal mode - show all items
+                            color = '#9b59b6';
+                        }
+                    }
                     else if (cell.isWall) color = '#393e46';
                     
                     ctx.fillStyle = color;
@@ -1898,18 +1914,57 @@
                     ctx.strokeStyle = '#2d4059';
                     ctx.strokeRect(x * gridSize, y * gridSize, gridSize, gridSize);
                     
+                    // Show labels for items
                     if (cell.isItem && cell.itemType) {
-                        ctx.fillStyle = 'white';
-                        ctx.font = 'bold 12px Arial';
-                        ctx.textAlign = 'center';
-                        ctx.textBaseline = 'middle';
-                        ctx.fillText(
-                            cell.itemType.charAt(0).toUpperCase() + cell.itemType.slice(1, 3), 
-                            x * gridSize + gridSize/2, 
-                            y * gridSize + gridSize/2
-                        );
+                        // During automation: only label selected item
+                        // Initial state: label all items
+                        const shouldShowLabel = !window.selectedItem || cell.itemType === window.selectedItem.toLowerCase();
+                        
+                        if (shouldShowLabel) {
+                            ctx.fillStyle = 'white';
+                            ctx.font = 'bold 12px Arial';
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+                            ctx.fillText(
+                                cell.itemType.charAt(0).toUpperCase() + cell.itemType.slice(1, 3), 
+                                x * gridSize + gridSize/2, 
+                                y * gridSize + gridSize/2
+                            );
+                        }
                     }
                 }
+            }
+            
+            // Draw yellow robot if position exists
+            if (window.robotPosition) {
+                // Draw glowing effect (outer circle)
+                ctx.fillStyle = 'rgba(255, 215, 0, 0.3)'; // Semi-transparent gold
+                ctx.beginPath();
+                ctx.arc(
+                    window.robotPosition.x * gridSize + gridSize / 2,
+                    window.robotPosition.y * gridSize + gridSize / 2,
+                    gridSize / 2.5, // Larger outer glow
+                    0,
+                    Math.PI * 2
+                );
+                ctx.fill();
+                
+                // Draw main robot (solid yellow circle)
+                ctx.fillStyle = '#FFD700'; // Bright yellow/gold
+                ctx.beginPath();
+                ctx.arc(
+                    window.robotPosition.x * gridSize + gridSize / 2,
+                    window.robotPosition.y * gridSize + gridSize / 2,
+                    gridSize / 3.5, // Main robot size
+                    0,
+                    Math.PI * 2
+                );
+                ctx.fill();
+                
+                // Add a border for better visibility
+                ctx.strokeStyle = '#FFA500'; // Orange border
+                ctx.lineWidth = 2;
+                ctx.stroke();
             }
             
             if (path.length > 0) {
@@ -1996,26 +2051,56 @@
         }
 
         function findPath() {
-            if (selectedItem && predefinedItems[selectedItem]) {
-                itemPoint = predefinedItems[selectedItem];
+            // CRITICAL FIX: Use window.selectedItem (set by autoCalculatePath) instead of local variable
+            const currentSelectedItem = window.selectedItem || selectedItem;
+            const currentItemPoint = window.itemPoint || itemPoint;
+            
+            console.log(`\n   [findPath] Called with:`);
+            console.log(`      - window.selectedItem: "${window.selectedItem}"`);
+            console.log(`      - local selectedItem: "${selectedItem}"`);
+            console.log(`      - currentSelectedItem (using): "${currentSelectedItem}"`);
+            console.log(`      - predefinedItems has "${currentSelectedItem}"? ${currentSelectedItem && predefinedItems[currentSelectedItem] ? 'YES' : 'NO'}`);
+            
+            if (currentSelectedItem && predefinedItems[currentSelectedItem]) {
+                // Use predefinedItems as authoritative source for item location
+                const targetItemPoint = predefinedItems[currentSelectedItem];
+                itemPoint = targetItemPoint; // Update local
+                window.itemPoint = targetItemPoint; // Update window
+                
+                console.log(`      - Using itemPoint: (${itemPoint.x}, ${itemPoint.y})`);
+                console.log(`      - Calculating: Start(${startPoint.x},${startPoint.y}) → Item(${itemPoint.x},${itemPoint.y}) → End(${endPoint.x},${endPoint.y})`);
+                
                 const pathToItem = findPathBetweenPoints(startPoint, itemPoint);
+                console.log(`      - Path to item: ${pathToItem.length} steps`);
+                
                 const pathFromItemToEnd = findPathBetweenPoints(itemPoint, endPoint);
+                console.log(`      - Path from item to end: ${pathFromItemToEnd.length} steps`);
                 
                 if (pathToItem.length > 0 && pathFromItemToEnd.length > 0) {
                     path = [...pathToItem, ...pathFromItemToEnd.slice(1)];
-                    updateStatus(`Path found with ${algorithm} (${path.length} steps) via ${selectedItem} pickup`);
+                    window.path = path; // Update window.path immediately!
+                    console.log(`      ✅ Combined path: ${path.length} total steps`);
+                    console.log(`      ✅ window.path updated with ${window.path.length} steps`);
+                    updateStatus(`Path found with ${algorithm} (${path.length} steps) via ${currentSelectedItem} pickup`);
                 } else {
                     path = [];
-                    enhancedESP32Manager.showNotification(`No available path to ${selectedItem}. Path is blocked.`, 'error');
-                    updateStatus(`No available path to ${selectedItem}. Path is blocked.`);
+                    window.path = [];
+                    console.log(`      ❌ Path blocked!`);
+                    enhancedESP32Manager.showNotification(`No available path to ${currentSelectedItem}. Path is blocked.`, 'error');
+                    updateStatus(`No available path to ${currentSelectedItem}. Path is blocked.`);
                 }
             } else {
+                console.log(`      - No item selected, calculating direct path`);
                 path = findPathBetweenPoints(startPoint, endPoint);
+                window.path = path; // Update window.path
                 
                 if (path.length > 0) {
+                    console.log(`      ✅ Direct path: ${path.length} steps`);
                     updateStatus(`Path found with ${algorithm} (${path.length} steps)`);
                 } else {
                     path = [];
+                    window.path = [];
+                    console.log(`      ❌ No path found!`);
                     enhancedESP32Manager.showNotification('No path found! Path is blocked.', 'error');
                     updateStatus('No path found! Path is blocked.');
                 }
@@ -2023,16 +2108,22 @@
         }
 
         function findPathBetweenPoints(start, end) {
-            switch(algorithm) {
+            let algoToUse = algorithm;
+            
+            // If auto mode, select best algorithm
+            if (algoToUse === 'auto') {
+                algoToUse = selectBestAlgorithm();
+            }
+            
+            // Execute the selected algorithm
+            switch(algoToUse) {
                 case 'dijkstra':
                     return dijkstra(start, end);
+                case 'aco':
                 case 'antcolony':
                     return antColonyOptimization(start, end);
-                case 'auto':
-                    const bestAlgo = selectBestAlgorithm();
-                    return findPathBetweenPoints(start, end, bestAlgo);
                 default:
-                    return [];
+                    return dijkstra(start, end); // Default to dijkstra
             }
         }
 
@@ -2297,25 +2388,33 @@
                 }
             }
             
+            // Draw green start point
             ctx.fillStyle = '#4ecca3';
             ctx.beginPath();
             ctx.arc(startPoint.x * gridSize + gridSize/2, startPoint.y * gridSize + gridSize/2, 8, 0, Math.PI * 2);
             ctx.fill();
             
+            // Draw red end point
             ctx.fillStyle = '#f95959';
             ctx.beginPath();
             ctx.arc(endPoint.x * gridSize + gridSize/2, endPoint.y * gridSize + gridSize/2, 8, 0, Math.PI * 2);
             ctx.fill();
             
+            // Draw purple item point (CRITICAL - must be visible in camera mode!)
             if (itemPoint) {
+                // Draw purple square at item location
                 ctx.fillStyle = '#9b59b6';
-                ctx.beginPath();
-                ctx.arc(itemPoint.x * gridSize + gridSize/2, itemPoint.y * gridSize + gridSize/2, 8, 0, Math.PI * 2);
-                ctx.fill();
+                ctx.fillRect(
+                    itemPoint.x * gridSize,
+                    itemPoint.y * gridSize,
+                    gridSize,
+                    gridSize
+                );
                 
+                // Add label
                 if (selectedItem) {
                     ctx.fillStyle = 'white';
-                    ctx.font = 'bold 12px Arial';
+                    ctx.font = 'bold 14px Arial';
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
                     ctx.fillText(
@@ -2324,6 +2423,23 @@
                         itemPoint.y * gridSize + gridSize/2
                     );
                 }
+            }
+            
+            // Draw blue path if it exists in camera mode
+            if (path.length > 0) {
+                ctx.strokeStyle = '#3498db';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                
+                for (let i = 0; i < path.length; i++) {
+                    if (i === 0) {
+                        ctx.moveTo(path[i].x * gridSize + gridSize/2, path[i].y * gridSize + gridSize/2);
+                    } else {
+                        ctx.lineTo(path[i].x * gridSize + gridSize/2, path[i].y * gridSize + gridSize/2);
+                    }
+                }
+                
+                ctx.stroke();
             }
         }
 
@@ -3181,12 +3297,12 @@
 
         // ==================== ORDER AUTOMATION FUNCTIONS ====================
         function handleStartOrder(orderId, orderNumber) {
-            console.log(`Starting automation for Order ${orderNumber} (${orderId})`);
+            console.log(`🚀 Starting automation for Order ${orderNumber} (${orderId})`);
             
             // Find the order in current orders
             const order = ordersManager.currentOrders.find(o => o.orderId === orderId);
             if (!order) {
-                console.error(`Order ${orderNumber} not found in current orders`);
+                console.error(`❌ Order ${orderNumber} not found in current orders`);
                 return;
             }
             
@@ -3194,7 +3310,7 @@
             const button = document.querySelector(`[data-order-id="${orderId}"]`);
             if (button) {
                 button.disabled = true;
-                button.innerHTML = '<span>Processing...</span>';
+                button.innerHTML = '<span>⏳ Processing...</span>';
             }
             
             // Get queue items for this order
@@ -3202,7 +3318,7 @@
             const targetOrder = queueOrders.find(o => o.orderId === orderId);
             
             if (!targetOrder || !targetOrder.items.length) {
-                console.error(`No queue items found for Order ${orderNumber}`);
+                console.error(`❌ No queue items found for Order ${orderNumber}`);
                 return;
             }
             
@@ -3214,48 +3330,373 @@
                 totalItems: targetOrder.items.length
             };
             
-            console.log(`Order ${orderNumber} has ${targetOrder.items.length} items to process`);
+            console.log(`📦 Order ${orderNumber} has ${targetOrder.items.length} items to process`);
             
             // Start processing first item
             processNextQueueItem();
         }
         
-        function processNextQueueItem() {
+        async function processNextQueueItem() {
             const processingOrder = window.currentProcessingOrder;
             if (!processingOrder) {
-                console.error('No processing order found');
+                console.error('❌ No processing order found');
                 return;
             }
             
             const { order, orderNumber, currentItemIndex, totalItems } = processingOrder;
             
             if (currentItemIndex >= totalItems) {
-                console.log(`Order ${orderNumber} completed!`);
+                console.log(`✅ Order ${orderNumber} completed!`);
                 completeOrderProcessing();
                 return;
             }
             
             const currentItem = order.items[currentItemIndex];
-            console.log(`Processing item ${currentItemIndex + 1}/${totalItems}: ${currentItem.quantity}x ${currentItem.productName} (${currentItem.category})`);
+            console.log(`\n═══════════════════════════════════════════════`);
+            console.log(`🔄 Processing item ${currentItemIndex + 1}/${totalItems}`);
+            console.log(`   Product: ${currentItem.productName}`);
+            console.log(`   Category: ${currentItem.category}`);
+            console.log(`   Quantity: ${currentItem.quantity}`);
+            console.log(`═══════════════════════════════════════════════\n`);
             
             // Update queue display to highlight current item
             updateQueueDisplay(order, orderNumber, currentItemIndex);
             
-            // Step 1: Select category in Order Management
-            selectCategoryInOrderManagement(currentItem.category, () => {
-                // Step 2: Generate and show path
-                generateAndShowPath(currentItem.category, () => {
-                    // Step 3: Simulate delivery
-                    simulateDeliveryPath(currentItem, () => {
-                        // Step 4: Show item dispatched animation
-                        showItemDispatchedAnimation(currentItem, () => {
-                            // Step 5: Move to next item
-                            window.currentProcessingOrder.currentItemIndex++;
-                            setTimeout(processNextQueueItem, 1000);
-                        });
-                    });
+            // AUTOMATION WORKFLOW:
+            // 1. Auto-select category in Orders tab
+            // 2. Auto-select Dijkstra in Advanced tab
+            // 3. Auto-switch to Camera tab
+            // 4. Auto-click Start Camera
+            // 5. Wait 6 seconds WHILE calculating path in camera mode
+            // 6. Auto-click Stop Camera (path already calculated)
+            // 7. Switch to grid mode (shows pre-calculated blue path)
+            // 8. Animate yellow robot along blue path
+            // 9. Complete and move to next
+            
+            await executeCompleteAutomation(currentItem, currentItemIndex, totalItems);
+        }
+        
+        async function executeCompleteAutomation(item, itemIndex, totalItems) {
+            try {
+                // STEP 1: Auto-select product category in Orders tab
+                console.log('📍 Step 1: Auto-selecting category in Orders tab...');
+                await autoSelectCategory(item.category);
+                
+                // STEP 2: Auto-select Dijkstra algorithm in Advanced tab
+                console.log('🧠 Step 2: Auto-selecting Dijkstra algorithm...');
+                await autoSelectDijkstra();
+                
+                // STEP 3: Auto-switch to Camera tab
+                console.log('📷 Step 3: Switching to Camera tab...');
+                await autoSwitchToCameraTab();
+                
+                // STEP 4: Auto-start camera
+                console.log('▶️ Step 4: Starting camera...');
+                await autoStartCamera();
+                
+                // STEP 5: Calculate path WHILE camera is running (in camera mode)
+                console.log('⏱️ Step 5: Camera running - Calculating path with Dijkstra in camera mode...');
+                await autoCalculatePath(item.category); // Calculate NOW while camera is on
+                
+                // Wait remaining time (path calculation takes ~800ms, so wait 5.2s more)
+                console.log('⏱️ Continuing camera for remaining time...');
+                await sleep(5200);
+                
+                // STEP 6: Stop camera (path already calculated and ready)
+                console.log('⏹️ Step 6: Stopping camera (path already calculated)...');
+                await autoStopCamera();
+                
+                // STEP 7: Grid mode now shows the pre-calculated blue path
+                console.log('🗺️ Step 7: Grid mode active - Blue path visible from camera calculation');
+                await sleep(500); // Brief pause to see grid with path
+                
+                // STEP 8: Animate robot along the pre-calculated path
+                console.log('🤖 Step 8: Animating robot delivery along blue path...');
+                await animateRobotDelivery();
+                
+                // STEP 9: Complete this item and move to next
+                console.log(`✅ Step 9: Item ${itemIndex + 1}/${totalItems} completed!\n`);
+                
+                // Move to next item after 1 second pause
+                window.currentProcessingOrder.currentItemIndex++;
+                setTimeout(processNextQueueItem, 1000);
+                
+            } catch (error) {
+                console.error('❌ Automation failed:', error);
+                enhancedESP32Manager.showNotification('Automation failed: ' + error.message, 'error');
+            }
+        }
+        
+        // ==================== AUTOMATION HELPER FUNCTIONS ====================
+        
+        async function autoSelectCategory(category) {
+            return new Promise((resolve) => {
+                // Find and click the category button
+                const categoryButtons = document.querySelectorAll('.item-btn');
+                let targetButton = null;
+                
+                categoryButtons.forEach(btn => {
+                    if (btn.dataset.item === category.toLowerCase()) {
+                        targetButton = btn;
+                    }
                 });
+                
+                if (targetButton) {
+                    // Remove active from all buttons
+                    categoryButtons.forEach(b => b.classList.remove('active'));
+                    // Activate target button
+                    targetButton.classList.add('active');
+                    
+                    // Set global variables
+                    window.selectedItem = category.toLowerCase();
+                    window.itemPoint = predefinedItems[category.toLowerCase()];
+                    
+                    console.log(`   ✓ Category selected: ${category} at position (${window.itemPoint.x}, ${window.itemPoint.y})`);
+                    updateStatus(`Selected ${category} at position (${window.itemPoint.x}, ${window.itemPoint.y})`);
+                    
+                    setTimeout(resolve, 500);
+                } else {
+                    console.error(`   ✗ Category button not found: ${category}`);
+                    resolve();
+                }
             });
+        }
+        
+        async function autoSelectDijkstra() {
+            return new Promise((resolve) => {
+                // Set algorithm to Dijkstra
+                window.algorithm = 'dijkstra';
+                
+                // Update UI if Advanced tab has algorithm buttons
+                const advancedTab = document.getElementById('advanced-tab');
+                if (advancedTab) {
+                    const dijkstraBtn = advancedTab.querySelector('[onclick*="dijkstra"]');
+                    if (dijkstraBtn) {
+                        dijkstraBtn.click();
+                    }
+                }
+                
+                console.log('   ✓ Dijkstra algorithm selected');
+                updateStatus('Algorithm: Dijkstra');
+                
+                setTimeout(resolve, 500);
+            });
+        }
+        
+        async function autoSwitchToCameraTab() {
+            return new Promise((resolve) => {
+                // Find and click Camera tab
+                const tabs = document.querySelectorAll('.tab');
+                tabs.forEach(tab => {
+                    if (tab.dataset.tab === 'camera') {
+                        tab.click();
+                    }
+                });
+                
+                console.log('   ✓ Switched to Camera tab');
+                
+                setTimeout(resolve, 500);
+            });
+        }
+        
+        async function autoStartCamera() {
+            return new Promise((resolve) => {
+                const startCameraBtn = document.getElementById('start-camera');
+                if (startCameraBtn) {
+                    startCameraBtn.click();
+                    console.log('   ✓ Camera started');
+                    updateStatus('Camera started - Detecting obstacles...');
+                } else {
+                    console.warn('   ⚠️ Start Camera button not found');
+                }
+                
+                setTimeout(resolve, 500);
+            });
+        }
+        
+        async function autoStopCamera() {
+            return new Promise((resolve) => {
+                console.log('   📷 Stopping camera and switching to grid mode...');
+                
+                const stopCameraBtn = document.getElementById('stop-camera');
+                if (stopCameraBtn) {
+                    stopCameraBtn.click();
+                    
+                    // CRITICAL: Stop camera animation completely
+                    if (animationFrameId) {
+                        cancelAnimationFrame(animationFrameId);
+                        animationFrameId = null;
+                    }
+                    
+                    // Stop video stream
+                    if (video.srcObject) {
+                        video.srcObject.getTracks().forEach(track => track.stop());
+                    }
+                    
+                    // Switch to grid mode (no camera overlay)
+                    window.inputMode = 'grid';
+                    
+                    // Redraw clean grid WITH the pre-calculated path
+                    // The path was already calculated in camera mode, now just display it
+                    drawGrid(); // Shows: green dot, purple square (current item), red dot
+                    
+                    if (window.path && window.path.length > 0) {
+                        drawPath(); // Shows: blue path (already calculated)
+                        console.log(`   ✓ Camera stopped - Grid shows calculated blue path (${window.path.length} steps)`);
+                    } else {
+                        console.warn('   ⚠️ Camera stopped but no path found!');
+                    }
+                    
+                    updateStatus('Grid mode active - Path ready for robot');
+                } else {
+                    console.warn('   ⚠️ Stop Camera button not found');
+                }
+                
+                setTimeout(resolve, 500);
+            });
+        }
+        
+        async function autoCalculatePath(category) {
+            return new Promise((resolve) => {
+                // Get item location
+                const itemLocation = predefinedItems[category.toLowerCase()];
+                
+                if (!itemLocation) {
+                    console.error(`   ✗ No location found for category: ${category}`);
+                    resolve();
+                    return;
+                }
+                
+                console.log(`\n🗺️ ═══════════════════════════════════════`);
+                console.log(`   PATH CALCULATION STARTING`);
+                console.log(`   Category: ${category}`);
+                console.log(`   🟢 Start: (${startPoint.x}, ${startPoint.y})`);
+                console.log(`   🟣 ${category}: (${itemLocation.x}, ${itemLocation.y})`);
+                console.log(`   🔴 End: (${endPoint.x}, ${endPoint.y})`);
+                console.log(`🗺️ ═══════════════════════════════════════\n`);
+                
+                // CRITICAL: Set ALL global variables BEFORE calling findPath()
+                window.itemPoint = itemLocation;
+                window.selectedItem = category.toLowerCase();
+                window.algorithm = 'dijkstra';
+                window.startPoint = {x: 1, y: 1};
+                window.endPoint = {x: 7, y: 7};
+                
+                // Update grid to mark the item location
+                const gridY = itemLocation.y;
+                const gridX = itemLocation.x;
+                if (grid[gridY] && grid[gridY][gridX]) {
+                    grid[gridY][gridX].isItem = true;
+                    grid[gridY][gridX].itemType = category.toLowerCase();
+                    console.log(`   ✓ Grid updated: Cell(${gridX},${gridY}) marked as item: ${category}`);
+                }
+                
+                // Clear previous path
+                window.path = [];
+                window.completedPath = [];
+                
+                console.log(`   🔍 Calling findPath()...`);
+                console.log(`      - selectedItem: ${window.selectedItem}`);
+                console.log(`      - itemPoint: (${window.itemPoint.x}, ${window.itemPoint.y})`);
+                console.log(`      - algorithm: ${window.algorithm}`);
+                
+                // Call EXISTING findPath() - it will calculate: Start → Item → End
+                findPath();
+                
+                // Verify path was calculated
+                setTimeout(() => {
+                    console.log(`\n   📊 PATH CALCULATION RESULT:`);
+                    if (window.path && window.path.length > 0) {
+                        console.log(`   ✅ SUCCESS!`);
+                        console.log(`   📏 Total steps: ${window.path.length}`);
+                        console.log(`   🔵 Path: Start(${window.path[0].x},${window.path[0].y}) → ... → End(${window.path[window.path.length-1].x},${window.path[window.path.length-1].y})`);
+                        
+                        // Check if path goes through item
+                        const goesThroughItem = window.path.some(p => p.x === itemLocation.x && p.y === itemLocation.y);
+                        console.log(`   ${goesThroughItem ? '✅' : '❌'} Path goes through ${category}? ${goesThroughItem}`);
+                        
+                        updateStatus(`Path: Start → ${category} → End (${window.path.length} steps)`);
+                    } else {
+                        console.error(`   ❌ FAILED - No path calculated!`);
+                        console.error(`      - window.path:`, window.path);
+                        console.error(`      - window.selectedItem:`, window.selectedItem);
+                        console.error(`      - window.itemPoint:`, window.itemPoint);
+                    }
+                    console.log(`🗺️ ═══════════════════════════════════════\n`);
+                    resolve();
+                }, 800);
+            });
+        }
+        
+        async function animateRobotDelivery() {
+            return new Promise(async (resolve) => {
+                if (!window.path || window.path.length === 0) {
+                    console.error('\n❌ ROBOT ANIMATION FAILED - No path available!');
+                    console.error('   window.path:', window.path);
+                    console.error('   window.itemPoint:', window.itemPoint);
+                    console.error('   window.selectedItem:', window.selectedItem);
+                    resolve();
+                    return;
+                }
+                
+                console.log('\n🤖 ═══════════════════════════════════════');
+                console.log('   ROBOT ANIMATION STARTING');
+                console.log(`   📍 Total steps: ${window.path.length}`);
+                console.log(`   🟢 Starting at: (${window.path[0].x}, ${window.path[0].y})`);
+                console.log(`   🔴 Ending at: (${window.path[window.path.length-1].x}, ${window.path[window.path.length-1].y})`);
+                
+                // Show first 10 and last 10 path points for verification
+                console.log(`   📊 Path preview (first 5): ${window.path.slice(0, 5).map(p => `(${p.x},${p.y})`).join(' → ')}`);
+                console.log(`   📊 Path preview (last 5): ${window.path.slice(-5).map(p => `(${p.x},${p.y})`).join(' → ')}`);
+                console.log('🤖 ═══════════════════════════════════════\n');
+                
+                updateStatus('🤖 Robot moving along blue path...');
+                
+                // Animate robot moving along each point in the calculated path
+                for (let i = 0; i < window.path.length; i++) {
+                    const point = window.path[i];
+                    
+                    // Update robot position on canvas
+                    window.robotPosition = point;
+                    
+                    console.log(`     🟡 Step ${i + 1}/${window.path.length} → (${point.x}, ${point.y})`);
+                    
+                    // Redraw entire grid with robot at new position
+                    drawGrid(); // This now draws the yellow robot dot with glow
+                    
+                    // Wait 250ms between steps (smooth visible movement)
+                    await sleep(250);
+                    
+                    // Log progress every 3 steps for visibility
+                    if (i % 3 === 0 || i === window.path.length - 1) {
+                        console.log(`     🟡 Step ${i + 1}/${window.path.length} → Position(${point.x}, ${point.y})`);
+                    }
+                }
+                
+                console.log('\n   ✅ Robot reached destination!');
+                console.log('   🎯 Delivery complete!\n');
+                updateStatus('✅ Delivery completed!');
+                
+                // Clear robot position and prepare for next item
+                setTimeout(() => {
+                    window.robotPosition = null; // Remove robot
+                    window.path = [];
+                    window.completedPath = [];
+                    window.itemPoint = null;
+                    window.selectedItem = null;
+                    
+                    // Redraw clean grid
+                    drawGrid();
+                    
+                    console.log('   🧹 Cleared grid for next item');
+                    resolve();
+                }, 800);
+            });
+        }
+        
+        // Helper: Sleep function
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
         }
         
         function showItemDispatchedAnimation(item, callback) {
@@ -3712,6 +4153,13 @@
                 button.disabled = false;
                 button.innerHTML = '<span>Completed</span>';
                 button.style.background = 'linear-gradient(135deg, #27ae60, #2ecc71)';
+                
+                // Hide "Completed" button after 2.5 seconds
+                setTimeout(() => {
+                    if (button && button.innerHTML.includes('Completed')) {
+                        button.style.display = 'none';
+                    }
+                }, 2500);
             }
             
             // Remove completed order from queue data
