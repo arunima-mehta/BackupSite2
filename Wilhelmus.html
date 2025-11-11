@@ -48,7 +48,15 @@
             gap: 20px;
             justify-content: center;
             width: 100%;
-            max-width: 1600px;
+            max-width: 1800px; /* Increased to accommodate both panels */
+        }
+
+        /* Panel container for order tracking and queue */
+        .panels-container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            width: 350px;
         }
         
         .controls {
@@ -255,6 +263,16 @@
             justify-content: space-between;
             align-items: center;
             margin-bottom: 10px;
+            gap: 10px;
+        }
+
+        .order-number {
+            font-size: 0.9rem;
+            color: #f39c12;
+            font-weight: bold;
+            background: rgba(243, 156, 18, 0.1);
+            padding: 4px 8px;
+            border-radius: 8px;
         }
         
         .order-id {
@@ -359,6 +377,158 @@
         
         .orders-panel::-webkit-scrollbar-thumb:hover {
             background: #2e9c81;
+        }
+
+        /* Queue-specific styles */
+        .queue-order-item {
+            background: rgba(255, 255, 255, 0.05);
+            border-left: 3px solid #f39c12;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 12px;
+            transition: all 0.3s ease;
+            animation: slideInRight 0.3s ease;
+        }
+
+        .queue-order-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateX(-3px);
+        }
+
+        .queue-order-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .queue-position {
+            background: #f39c12;
+            color: #232931;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+
+        .queue-order-id {
+            font-weight: bold;
+            color: #f39c12;
+            font-size: 0.85rem;
+        }
+
+        .queue-status {
+            color: #4ecca3;
+            font-size: 0.7rem;
+            background: rgba(78, 204, 163, 0.1);
+            padding: 2px 6px;
+            border-radius: 10px;
+            margin-left: auto;
+        }
+
+        .queue-order-summary {
+            margin-bottom: 8px;
+        }
+
+        .queue-categories {
+            font-weight: bold;
+            color: #f39c12;
+            font-size: 0.9rem;
+        }
+
+        .queue-order-details {
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding-top: 8px;
+        }
+
+        .queue-item-detail {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px 0;
+            font-size: 0.8rem;
+        }
+
+        .item-category {
+            background: rgba(243, 156, 18, 0.2);
+            color: #f39c12;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: bold;
+            min-width: 60px;
+            text-align: center;
+        }
+
+        .item-name {
+            color: #ddd;
+            flex: 1;
+            opacity: 0.9;
+        }
+
+        .item-quantity {
+            color: #aaa;
+            font-weight: bold;
+            min-width: 30px;
+            text-align: right;
+        }
+
+        .order-footer {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 10px;
+            margin-top: 10px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .start-order-btn {
+            background: linear-gradient(135deg, #4ecca3, #2e9c81);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .start-order-btn:hover {
+            background: linear-gradient(135deg, #2e9c81, #4ecca3);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+
+        .start-order-btn:active {
+            transform: translateY(0);
+        }
+
+        .start-order-btn:disabled {
+            background: #666;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        /* Queue panel inherits styles from .orders-panel */
+
+        #queue-panel h2 {
+            color: #f39c12;
+            border-bottom-color: #f39c12;
+        }
+
+        #queue-panel .order-count {
+            background: #f39c12;
+            color: #232931;
         }
         
         #canvas {
@@ -836,6 +1006,12 @@
                     <button id="start-delivery" class="btn" style="margin-top: 15px;">Start Delivery Cycle</button>
                     <button id="add-to-queue" class="btn" style="background: #3498db; margin-top: 8px;">Add to Queue</button>
                     <button id="return-to-start" class="btn" style="background: #e67e22; margin-top: 8px;">Return to Start Now</button>
+                    
+                    <!-- Test Section -->
+                    <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.2);">
+                        <p style="font-size: 0.9rem; color: #aaa; margin-bottom: 10px;">Testing:</p>
+                        <button id="test-queue" class="btn" style="background: #9b59b6;">Test Order Queue</button>
+                    </div>
                 </div>
             </div>
 
@@ -946,24 +1122,40 @@
             <canvas id="canvas"></canvas>
             <div class="robot-indicator" id="robot-indicator"></div>
         </div>
-        
-        <!-- Real-time Orders Panel -->
-        <div class="orders-panel" id="orders-panel">
-            <h2>
-                Order Tracking
-                <span class="connection-indicator">
-                    <span class="connection-dot" id="orders-connection-dot"></span>
-                    <span id="orders-connection-text">Disconnected</span>
-                </span>
-            </h2>
-            <div class="order-count" id="order-count">0 Orders</div>
-            <div id="orders-list" class="orders-list">
-                <div class="no-orders">Waiting for orders...</div>
+
+        <!-- Panels Container for Order Tracking and Queue -->
+        <div class="panels-container">
+            <!-- Real-time Orders Panel -->
+            <div class="orders-panel" id="orders-panel">
+                <h2>
+                    Order Tracking
+                    <span class="connection-indicator">
+                        <span class="connection-dot" id="orders-connection-dot"></span>
+                        <span id="orders-connection-text">Disconnected</span>
+                    </span>
+                </h2>
+                <div class="order-count" id="order-count">0 Orders</div>
+                <div id="orders-list" class="orders-list">
+                    <div class="no-orders">Waiting for orders...</div>
+                </div>
+            </div>
+
+            <!-- Order Queue Panel -->
+            <div class="orders-panel" id="queue-panel">
+                <h2>
+                    Order Queue
+                    <span class="connection-indicator">
+                        <span class="connection-dot connected" id="queue-connection-dot"></span>
+                        <span id="queue-connection-text">Active</span>
+                    </span>
+                </h2>
+                <div class="order-count" id="queue-count">0 Items</div>
+                <div id="queue-list" class="orders-list">
+                    <div class="no-orders">Queue is empty...</div>
+                </div>
             </div>
         </div>
-    </div>
-
-    <script>
+    </div>    <script>
         // ==================== CORE APPLICATION VARIABLES ====================
         const video = document.createElement('video');
         video.autoplay = true;
@@ -987,7 +1179,7 @@
         
         let grid = [];
         let startPoint = {x: 1, y: 1};
-        let endPoint = {x: cols - 2, y: rows - 2};
+        let endPoint = {x: 7, y: 7};
         let itemPoint = null;
         let selectedItem = null;
         let path = [];
@@ -2496,6 +2688,10 @@
                 enhancedESP32Manager.testMovement();
             });
             
+            document.getElementById('test-queue').addEventListener('click', () => {
+                testOrderQueue();
+            });
+
             document.getElementById('calibrate-turns').addEventListener('click', async () => {
                 enhancedESP32Manager.showNotification('Calibrating turns...', 'info');
                 
@@ -2648,15 +2844,20 @@
                     };
                 });
                 
+                // Sort orders by date (oldest first) for consistent numbering
+                processedOrders.sort((a, b) => new Date(a.date) - new Date(b.date));
+                
                 // Build HTML
                 let html = '';
-                processedOrders.forEach(order => {
+                processedOrders.forEach((order, index) => {
                     const orderDate = new Date(order.date);
                     const timeAgo = this.getTimeAgo(orderDate);
+                    const orderNumber = index + 1;
                     
                     html += `
-                        <div class="order-item" data-order-id="${order.orderId}">
+                        <div class="order-item" data-order-id="${order.orderId}" data-order-number="${orderNumber}">
                             <div class="order-header">
+                                <div class="order-number">Order ${orderNumber}</div>
                                 <div class="order-id">#${order.orderId.slice(-6).toUpperCase()}</div>
                                 <div class="order-status">${order.status}</div>
                             </div>
@@ -2674,12 +2875,274 @@
                     
                     html += `
                             </div>
-                            <div class="order-time">${timeAgo}</div>
+                            <div class="order-footer">
+                                <div class="order-time">${timeAgo}</div>
+                                <button class="start-order-btn" data-order-id="${order.orderId}" data-order-number="${orderNumber}">
+                                    Start Order
+                                </button>
+                            </div>
                         </div>
                     `;
                 });
                 
                 ordersList.innerHTML = html;
+                
+                // Also process the queue
+                this.processQueue(processedOrders);
+            },
+
+            processQueue(orders) {
+                const queueItems = [];
+                console.log('🔄 Processing queue for orders:', orders);
+                
+                // Products lookup with orderProduct field
+                const productsLookup = {
+                    // Jewelry Products - Others
+                    "pearl1": { orderProduct: "Others" },
+                    "pearl2": { orderProduct: "Others" },
+                    "pearl3": { orderProduct: "Others" },
+                    "pearl4": { orderProduct: "Others" },
+                    "pearl5": { orderProduct: "Others" },
+                    "pearl6": { orderProduct: "Others" },
+                    "pearl7": { orderProduct: "Others" },
+                    "pearl8": { orderProduct: "Others" },
+                    "pearl9": { orderProduct: "Others" },
+
+                    // Perfumes
+                    "per1": { orderProduct: "Perfumes" },
+                    "per2": { orderProduct: "Perfumes" },
+                    "per3": { orderProduct: "Perfumes" },
+                    "per4": { orderProduct: "Perfumes" },
+                    "per5": { orderProduct: "Perfumes" },
+                    "per6": { orderProduct: "Perfumes" },
+                    "per7": { orderProduct: "Perfumes" },
+                    "per8": { orderProduct: "Perfumes" },
+                    "per9": { orderProduct: "Perfumes" },
+                    "per10": { orderProduct: "Perfumes" },
+                    "per11": { orderProduct: "Perfumes" },
+                    "per12": { orderProduct: "Perfumes" },
+
+                    // Sunglasses
+                    "glass1": { orderProduct: "Sunglasses" },
+                    "glass2": { orderProduct: "Sunglasses" },
+                    "glass3": { orderProduct: "Sunglasses" },
+                    "glass4": { orderProduct: "Sunglasses" },
+                    "glass5": { orderProduct: "Sunglasses" },
+                    "glass6": { orderProduct: "Sunglasses" },
+                    "glass7": { orderProduct: "Sunglasses" },
+                    "glass8": { orderProduct: "Sunglasses" },
+                    "glass9": { orderProduct: "Sunglasses" },
+                    "glass10": { orderProduct: "Sunglasses" },
+                    "glass11": { orderProduct: "Sunglasses" },
+                    "glass12": { orderProduct: "Sunglasses" },
+                    "glass13": { orderProduct: "Sunglasses" },
+                    "glass14": { orderProduct: "Sunglasses" },
+                    "glass15": { orderProduct: "Sunglasses" },
+                    "glass16": { orderProduct: "Sunglasses" },
+                    "glass17": { orderProduct: "Sunglasses" },
+
+                    // Bags
+                    "bag1": { orderProduct: "Bags" },
+                    "bag2": { orderProduct: "Bags" },
+                    "bag3": { orderProduct: "Bags" },
+                    "bag4": { orderProduct: "Bags" },
+                    "bag5": { orderProduct: "Bags" },
+                    "bag6": { orderProduct: "Bags" },
+                    "bag7": { orderProduct: "Bags" },
+                    "bag8": { orderProduct: "Bags" },
+                    "bag9": { orderProduct: "Bags" },
+                    "bag10": { orderProduct: "Bags" },
+                    "bag11": { orderProduct: "Bags" },
+                    "bag12": { orderProduct: "Bags" },
+                    "bag13": { orderProduct: "Bags" },
+
+                    // Hats
+                    "hat1": { orderProduct: "Hats" },
+                    "hat2": { orderProduct: "Hats" },
+                    "hat3": { orderProduct: "Hats" },
+                    "hat4": { orderProduct: "Hats" },
+                    "hat5": { orderProduct: "Hats" },
+                    "hat6": { orderProduct: "Hats" },
+                    "hat7": { orderProduct: "Hats" },
+                    "hat8": { orderProduct: "Hats" },
+
+                    // Topwear, Footwear, etc. - Others (ignored in queue)
+                    // These are set to "Others" and will be filtered out
+                };
+
+                // Extract orders with queue-eligible items (only Hats, Sunglasses, Perfumes, Bags)
+                const queueOrders = [];
+                
+                orders.forEach(order => {
+                    const orderQueueItems = [];
+                    
+                    order.processedItems.forEach(item => {
+                        // Try to match by name or _id
+                        const productData = this.findProductByName(item.name, productsLookup);
+                        console.log(`📦 Product: "${item.name}" -> Category: "${productData?.orderProduct || 'Not found'}"`);
+                        
+                        if (productData && ['Hats', 'Sunglasses', 'Perfumes', 'Bags'].includes(productData.orderProduct)) {
+                            console.log(`✅ Adding to queue: ${item.name} (${productData.orderProduct}) x ${item.quantity}`);
+                            
+                            orderQueueItems.push({
+                                productName: item.name,
+                                category: productData.orderProduct,
+                                quantity: item.quantity
+                            });
+                        } else {
+                            console.log(`❌ Skipping: ${item.name} (${productData?.orderProduct || 'Not found'})`);
+                        }
+                    });
+                    
+                    // Only add order to queue if it has eligible items
+                    if (orderQueueItems.length > 0) {
+                        queueOrders.push({
+                            orderId: order.orderId,
+                            orderDate: new Date(order.date),
+                            orderTimestamp: order.date,
+                            status: order.status,
+                            items: orderQueueItems
+                        });
+                    }
+                });
+
+                // Sort queue orders by order date (oldest first - FIFO)
+                queueOrders.sort((a, b) => {
+                    return new Date(a.orderTimestamp) - new Date(b.orderTimestamp);
+                });
+
+                console.log('🔄 Queue orders sorted by date (oldest first):', queueOrders.map(order => ({
+                    orderId: order.orderId.slice(-6),
+                    items: order.items.map(item => `${item.quantity}x ${item.category}`).join(', '),
+                    date: order.orderDate.toLocaleString()
+                })));
+
+                // Store queue data for automation access
+                this.currentQueueData = queueOrders;
+
+                this.displayQueue(queueOrders);
+            },
+
+            findProductByName(productName, productsLookup) {
+                // Direct ID lookup first
+                for (const [id, data] of Object.entries(productsLookup)) {
+                    if (id === productName) {
+                        return data;
+                    }
+                }
+
+                // Fuzzy matching by name patterns
+                const name = productName.toLowerCase();
+                
+                // Bag patterns - comprehensive matching
+                if (name.includes('bag') || name.includes('handbag') || name.includes('clutch') || 
+                    name.includes('tote') || name.includes('purse') || name.includes('satchel') ||
+                    name.includes('backpack') || name.includes('messenger') || name.includes('shoulder bag') ||
+                    name.includes('crossbody') || name.includes('wallet') || name.includes('pouch')) {
+                    return { orderProduct: "Bags" };
+                }
+                
+                // Hat patterns - comprehensive matching
+                if (name.includes('hat') || name.includes('cap') || name.includes('fedora') || 
+                    name.includes('brim') || name.includes('beanie') || name.includes('beret') ||
+                    name.includes('panama') || name.includes('baseball cap') || name.includes('bucket hat') ||
+                    name.includes('wide brim') || name.includes('felt hat')) {
+                    return { orderProduct: "Hats" };
+                }
+                
+                // Sunglasses patterns - comprehensive matching
+                if (name.includes('sunglasses') || name.includes('shades') || name.includes('eyewear') ||
+                    name.includes('aviator') || name.includes('wayfarer') || name.includes('ray-ban') ||
+                    name.includes('oversized') || name.includes('cat eye') || name.includes('round sunglasses') ||
+                    name.includes('geometric') || name.includes('gradient lenses')) {
+                    return { orderProduct: "Sunglasses" };
+                }
+                
+                // Perfume patterns - comprehensive matching
+                if (name.includes('perfume') || name.includes('fragrance') || name.includes('eau de') || 
+                    name.includes('cologne') || name.includes('parfum') || name.includes('scent') ||
+                    name.includes('toilette') || name.includes('essence') || name.includes('mist') ||
+                    name.includes('spray')) {
+                    return { orderProduct: "Perfumes" };
+                }
+                
+                // Additional specific product name mappings based on your example
+                if (name.includes('elegant leather handbag') || name.includes('mini stylish bag')) {
+                    return { orderProduct: "Bags" };
+                }
+                
+                // Default to Others (will be filtered out)
+                return { orderProduct: "Others" };
+            },
+
+            displayQueue(queueOrders) {
+                const queueList = document.getElementById('queue-list');
+                const queueCount = document.getElementById('queue-count');
+                
+                console.log(`🎯 Displaying ${queueOrders.length} orders in queue:`, queueOrders);
+                
+                // Count total items across all orders
+                const totalItems = queueOrders.reduce((sum, order) => {
+                    return sum + order.items.reduce((itemSum, item) => itemSum + item.quantity, 0);
+                }, 0);
+                
+                // Update count
+                queueCount.textContent = `${queueOrders.length} ${queueOrders.length === 1 ? 'Order' : 'Orders'} (${totalItems} items)`;
+                
+                if (queueOrders.length === 0) {
+                    queueList.innerHTML = '<div class="no-orders">Queue is empty...</div>';
+                    return;
+                }
+                
+                // Build queue HTML
+                let html = '';
+                queueOrders.forEach((order, orderIndex) => {
+                    // Group items by category and sum quantities
+                    const categoryGroups = {};
+                    order.items.forEach(item => {
+                        if (categoryGroups[item.category]) {
+                            categoryGroups[item.category] += item.quantity;
+                        } else {
+                            categoryGroups[item.category] = item.quantity;
+                        }
+                    });
+                    
+                    // Create category summary (e.g., "2x Bags, 1x Perfumes")
+                    const categorySummary = Object.entries(categoryGroups)
+                        .map(([category, quantity]) => `${quantity}x ${category}`)
+                        .join(', ');
+                    
+                    html += `
+                        <div class="queue-order-item" data-position="${orderIndex + 1}">
+                            <div class="queue-order-header">
+                                <div class="queue-position">#${orderIndex + 1}</div>
+                                <div class="queue-order-id">${order.orderId.slice(-6).toUpperCase()}</div>
+                                <div class="queue-status">${order.status}</div>
+                            </div>
+                            <div class="queue-order-summary">
+                                <div class="queue-categories">${categorySummary}</div>
+                            </div>
+                            <div class="queue-order-details">
+                    `;
+                    
+                    // Add individual items details
+                    order.items.forEach(item => {
+                        html += `
+                            <div class="queue-item-detail">
+                                <span class="item-category">${item.category}</span>
+                                <span class="item-name">${item.productName}</span>
+                                <span class="item-quantity">x${item.quantity}</span>
+                            </div>
+                        `;
+                    });
+                    
+                    html += `
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                queueList.innerHTML = html;
             },
             
             getTimeAgo(date) {
@@ -2715,6 +3178,649 @@
                 this.startPolling();
             }
         };
+
+        // ==================== ORDER AUTOMATION FUNCTIONS ====================
+        function handleStartOrder(orderId, orderNumber) {
+            console.log(`Starting automation for Order ${orderNumber} (${orderId})`);
+            
+            // Find the order in current orders
+            const order = ordersManager.currentOrders.find(o => o.orderId === orderId);
+            if (!order) {
+                console.error(`Order ${orderNumber} not found in current orders`);
+                return;
+            }
+            
+            // Update button state
+            const button = document.querySelector(`[data-order-id="${orderId}"]`);
+            if (button) {
+                button.disabled = true;
+                button.innerHTML = '<span>Processing...</span>';
+            }
+            
+            // Get queue items for this order
+            const queueOrders = ordersManager.currentQueueData || [];
+            const targetOrder = queueOrders.find(o => o.orderId === orderId);
+            
+            if (!targetOrder || !targetOrder.items.length) {
+                console.error(`No queue items found for Order ${orderNumber}`);
+                return;
+            }
+            
+            // Store order processing state
+            window.currentProcessingOrder = {
+                order: targetOrder,
+                orderNumber: orderNumber,
+                currentItemIndex: 0,
+                totalItems: targetOrder.items.length
+            };
+            
+            console.log(`Order ${orderNumber} has ${targetOrder.items.length} items to process`);
+            
+            // Start processing first item
+            processNextQueueItem();
+        }
+        
+        function processNextQueueItem() {
+            const processingOrder = window.currentProcessingOrder;
+            if (!processingOrder) {
+                console.error('No processing order found');
+                return;
+            }
+            
+            const { order, orderNumber, currentItemIndex, totalItems } = processingOrder;
+            
+            if (currentItemIndex >= totalItems) {
+                console.log(`Order ${orderNumber} completed!`);
+                completeOrderProcessing();
+                return;
+            }
+            
+            const currentItem = order.items[currentItemIndex];
+            console.log(`Processing item ${currentItemIndex + 1}/${totalItems}: ${currentItem.quantity}x ${currentItem.productName} (${currentItem.category})`);
+            
+            // Update queue display to highlight current item
+            updateQueueDisplay(order, orderNumber, currentItemIndex);
+            
+            // Step 1: Select category in Order Management
+            selectCategoryInOrderManagement(currentItem.category, () => {
+                // Step 2: Generate and show path
+                generateAndShowPath(currentItem.category, () => {
+                    // Step 3: Simulate delivery
+                    simulateDeliveryPath(currentItem, () => {
+                        // Step 4: Show item dispatched animation
+                        showItemDispatchedAnimation(currentItem, () => {
+                            // Step 5: Move to next item
+                            window.currentProcessingOrder.currentItemIndex++;
+                            setTimeout(processNextQueueItem, 1000);
+                        });
+                    });
+                });
+            });
+        }
+        
+        function showItemDispatchedAnimation(item, callback) {
+            console.log(`Showing dispatched animation for ${item.productName}`);
+            
+            // Find the current item in queue display and animate it
+            const queueItems = document.querySelectorAll('.queue-item-detail');
+            const currentItemElement = Array.from(queueItems).find(el => 
+                el.querySelector('.item-name').textContent.includes('*')
+            );
+            
+            if (currentItemElement) {
+                // Add dispatched styling
+                currentItemElement.style.background = 'rgba(39, 174, 96, 0.3)';
+                currentItemElement.style.borderLeft = '3px solid #27ae60';
+                
+                // Update the content to show "Dispatched"
+                const itemName = currentItemElement.querySelector('.item-name');
+                const originalText = itemName.textContent.replace(' *', '');
+                itemName.innerHTML = `${originalText} <span style="color: #27ae60; font-weight: bold;">✓ Dispatched</span>`;
+                
+                // Show for 3 seconds then fade out
+                setTimeout(() => {
+                    currentItemElement.style.opacity = '0';
+                    currentItemElement.style.transform = 'translateX(-100%)';
+                    currentItemElement.style.transition = 'all 0.5s ease';
+                    
+                    setTimeout(() => {
+                        if (callback) callback();
+                    }, 500);
+                }, 3000);
+            } else {
+                // If animation element not found, just proceed
+                setTimeout(() => {
+                    if (callback) callback();
+                }, 1000);
+            }
+        }
+        
+        function updateQueueDisplay(order, orderNumber, currentItemIndex) {
+            const queueList = document.getElementById('queue-list');
+            const queueCount = document.getElementById('queue-count');
+            
+            // Get all queue orders to show full queue context
+            const allQueueOrders = ordersManager.currentQueueData || [];
+            
+            // Build full queue display showing all orders
+            let html = '';
+            let totalOrdersInQueue = 0;
+            let totalItemsInQueue = 0;
+            
+            allQueueOrders.forEach((queueOrder, orderIndex) => {
+                const isProcessingOrder = queueOrder.orderId === order.orderId;
+                
+                if (isProcessingOrder) {
+                    // Show only remaining items for processing order
+                    const remainingItems = order.items.slice(currentItemIndex);
+                    if (remainingItems.length > 0) {
+                        totalOrdersInQueue++;
+                        totalItemsInQueue += remainingItems.length;
+                        
+                        const categorySummary = remainingItems
+                            .map(item => `${item.quantity}x ${item.category}`)
+                            .join(', ');
+                        
+                        html += `
+                            <div class="queue-order-item" data-position="${totalOrdersInQueue}" style="border-left-color: #4ecca3;">
+                                <div class="queue-order-header">
+                                    <div class="queue-position" style="background: #4ecca3;">#${totalOrdersInQueue}</div>
+                                    <div class="queue-order-id">${queueOrder.orderId.slice(-6).toUpperCase()}</div>
+                                    <div class="queue-status" style="background: rgba(78, 204, 163, 0.2); color: #4ecca3;">Processing</div>
+                                </div>
+                                <div class="queue-order-summary">
+                                    <div class="queue-categories" style="color: #4ecca3;">${categorySummary}</div>
+                                </div>
+                                <div class="queue-order-details">
+                        `;
+                        
+                        remainingItems.forEach((item, index) => {
+                            const isCurrentItem = index === 0; // First remaining item is current
+                            const itemStyle = isCurrentItem ? 
+                                'background: rgba(78, 204, 163, 0.2); border-left: 3px solid #4ecca3; padding-left: 8px;' : 
+                                'opacity: 0.7;';
+                            
+                            html += `
+                                <div class="queue-item-detail" style="${itemStyle}">
+                                    <span class="item-category">${item.category}</span>
+                                    <span class="item-name">${item.productName}${isCurrentItem ? ' *' : ''}</span>
+                                    <span class="item-quantity">x${item.quantity}</span>
+                                </div>
+                            `;
+                        });
+                        
+                        html += `
+                                </div>
+                            </div>
+                        `;
+                    }
+                } else {
+                    // Show complete order for non-processing orders
+                    if (queueOrder.items.length > 0) {
+                        totalOrdersInQueue++;
+                        totalItemsInQueue += queueOrder.items.reduce((sum, item) => sum + item.quantity, 0);
+                        
+                        const categoryGroups = {};
+                        queueOrder.items.forEach(item => {
+                            if (categoryGroups[item.category]) {
+                                categoryGroups[item.category] += item.quantity;
+                            } else {
+                                categoryGroups[item.category] = item.quantity;
+                            }
+                        });
+                        
+                        const categorySummary = Object.entries(categoryGroups)
+                            .map(([category, quantity]) => `${quantity}x ${category}`)
+                            .join(', ');
+                        
+                        html += `
+                            <div class="queue-order-item" data-position="${totalOrdersInQueue}">
+                                <div class="queue-order-header">
+                                    <div class="queue-position">#${totalOrdersInQueue}</div>
+                                    <div class="queue-order-id">${queueOrder.orderId.slice(-6).toUpperCase()}</div>
+                                    <div class="queue-status">Waiting</div>
+                                </div>
+                                <div class="queue-order-summary">
+                                    <div class="queue-categories">${categorySummary}</div>
+                                </div>
+                                <div class="queue-order-details">
+                        `;
+                        
+                        queueOrder.items.forEach(item => {
+                            html += `
+                                <div class="queue-item-detail">
+                                    <span class="item-category">${item.category}</span>
+                                    <span class="item-name">${item.productName}</span>
+                                    <span class="item-quantity">x${item.quantity}</span>
+                                </div>
+                            `;
+                        });
+                        
+                        html += `
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
+            });
+            
+            // Update queue count
+            queueCount.textContent = `${totalOrdersInQueue} ${totalOrdersInQueue === 1 ? 'Order' : 'Orders'} (${totalItemsInQueue} items)`;
+            
+            if (totalOrdersInQueue === 0) {
+                queueList.innerHTML = '<div class="no-orders">Queue is empty...</div>';
+            } else {
+                queueList.innerHTML = html;
+            }
+        }
+        
+        function selectCategoryInOrderManagement(category, callback) {
+            console.log(`Selecting ${category} in Order Management`);
+            
+            // Find and click the category button
+            const categoryButton = Array.from(document.querySelectorAll('.item-btn'))
+                .find(btn => btn.textContent.includes(category));
+            
+            if (categoryButton) {
+                console.log(`Clicking ${category} button`);
+                categoryButton.click();
+                
+                // Visual feedback
+                const originalBackground = categoryButton.style.background;
+                categoryButton.style.background = '#4ecca3';
+                categoryButton.style.transform = 'scale(1.05)';
+                
+                setTimeout(() => {
+                    categoryButton.style.background = originalBackground;
+                    categoryButton.style.transform = '';
+                    if (callback) callback();
+                }, 1500);
+            } else {
+                console.error(`Category button for ${category} not found`);
+                if (callback) callback();
+            }
+        }
+        
+        function generateAndShowPath(category, callback) {
+            console.log(`Generating path to ${category}`);
+            
+            // Get the predefined path coordinates
+            const pathCoordinates = getCategoryPath(category);
+            if (!pathCoordinates || pathCoordinates.length === 0) {
+                console.error(`No path found for category: ${category}`);
+                if (callback) callback();
+                return;
+            }
+            
+            console.log(`Drawing ${pathCoordinates.length} waypoints for ${category}`);
+            
+            // Clear any existing paths and redraw grid
+            drawGrid();
+            
+            // Draw bright green path lines connecting all waypoints
+            drawFullPath(pathCoordinates);
+            
+            // Auto-click Start Delivery Cycle after showing path
+            setTimeout(() => {
+                clickStartDeliveryCycle(() => {
+                    if (callback) callback();
+                });
+            }, 1000);
+        }
+        
+        function drawFullPath(pathCoordinates) {
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            if (pathCoordinates.length < 2) return;
+            
+            // Set bright green path style
+            ctx.strokeStyle = '#00ff88';
+            ctx.lineWidth = 4;
+            ctx.setLineDash([]);
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            
+            // Draw connected path
+            ctx.beginPath();
+            
+            // Move to start point
+            const startPoint = pathCoordinates[0];
+            const startX = startPoint.x * gridSize + gridSize / 2;
+            const startY = startPoint.y * gridSize + gridSize / 2;
+            ctx.moveTo(startX, startY);
+            
+            // Draw lines to each subsequent point
+            for (let i = 1; i < pathCoordinates.length; i++) {
+                const point = pathCoordinates[i];
+                const x = point.x * gridSize + gridSize / 2;
+                const y = point.y * gridSize + gridSize / 2;
+                ctx.lineTo(x, y);
+            }
+            
+            ctx.stroke();
+            
+            // Add waypoint markers
+            ctx.fillStyle = '#00ff88';
+            pathCoordinates.forEach((point, index) => {
+                const x = point.x * gridSize + gridSize / 2;
+                const y = point.y * gridSize + gridSize / 2;
+                
+                if (index === 0 || index === pathCoordinates.length - 1) {
+                    // Larger markers for start and end
+                    ctx.beginPath();
+                    ctx.arc(x, y, 4, 0, 2 * Math.PI);
+                    ctx.fill();
+                } else {
+                    // Small markers for waypoints
+                    ctx.beginPath();
+                    ctx.arc(x, y, 2, 0, 2 * Math.PI);
+                    ctx.fill();
+                }
+            });
+        }
+        
+        function findStartPosition() {
+            for (let y = 0; y < rows; y++) {
+                for (let x = 0; x < cols; x++) {
+                    if (grid[y][x].isStart) {
+                        return { x, y };
+                    }
+                }
+            }
+            return null;
+        }
+        
+        function findEndPosition() {
+            for (let y = 0; y < rows; y++) {
+                for (let x = 0; x < cols; x++) {
+                    if (grid[y][x].isEnd) {
+                        return { x, y };
+                    }
+                }
+            }
+            return null;
+        }
+        
+        function findCategoryPosition(category) {
+            // Map categories to their positions on the grid (based on predefined locations)
+            const categoryPositions = {
+                'Hats': { x: 4, y: 4 }, // Hat position
+                'Bags': { x: 6, y: 4 }, // Bag position  
+                'Perfumes': { x: 4, y: 6 }, // Per position
+                'Sunglasses': { x: 6, y: 6 } // Sun position
+            };
+            
+            return categoryPositions[category] || null;
+        }
+        
+        function drawPathLine(from, to, color) {
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 3;
+            ctx.setLineDash([]);
+            
+            const fromX = from.x * gridSize + gridSize / 2;
+            const fromY = from.y * gridSize + gridSize / 2;
+            const toX = to.x * gridSize + gridSize / 2;
+            const toY = to.y * gridSize + gridSize / 2;
+            
+            ctx.beginPath();
+            ctx.moveTo(fromX, fromY);
+            ctx.lineTo(toX, toY);
+            ctx.stroke();
+        }
+        
+        function clickStartDeliveryCycle(callback) {
+            console.log(`Auto-clicking Start Delivery Cycle`);
+            
+            const startButton = document.getElementById('start-delivery');
+            if (startButton) {
+                startButton.click();
+                
+                // Show notification
+                enhancedESP32Manager.showNotification('Delivery cycle started!', 'success');
+                
+                setTimeout(() => {
+                    if (callback) callback();
+                }, 500);
+            } else {
+                console.error('Start Delivery button not found');
+                if (callback) callback();
+            }
+        }
+        
+        function simulateDeliveryPath(item, callback) {
+            console.log(`Starting delivery simulation for ${item.productName}`);
+            
+            // Get the predefined path for this category
+            const pathCoordinates = getCategoryPath(item.category);
+            if (!pathCoordinates || pathCoordinates.length === 0) {
+                console.error(`No path found for category: ${item.category}`);
+                if (callback) callback();
+                return;
+            }
+            
+            // Create or show robot indicator (yellow dot)
+            let robotDot = document.getElementById('robot-indicator');
+            if (!robotDot) {
+                // Find the visualization container to append the robot dot to
+                const visualizationDiv = document.querySelector('.visualization');
+                robotDot = document.createElement('div');
+                robotDot.id = 'robot-indicator';
+                robotDot.className = 'robot-indicator';
+                visualizationDiv.appendChild(robotDot);
+            }
+            
+            const canvas = document.getElementById('canvas');
+            const canvasRect = canvas.getBoundingClientRect();
+            
+            // Position robot at canvas relative position
+            robotDot.style.position = 'absolute';
+            robotDot.style.display = 'block';
+            robotDot.style.zIndex = '1000';
+            
+            console.log(`Robot following ${pathCoordinates.length} waypoints for ${item.category}`);
+            
+            // Animate robot along the path
+            animateRobotAlongPath(robotDot, pathCoordinates, canvasRect, () => {
+                console.log(`Product dispatched at destination: ${item.productName}`);
+                enhancedESP32Manager.showNotification(`${item.productName} dispatched!`, 'success');
+                
+                // Hide robot dot and complete
+                setTimeout(() => {
+                    robotDot.style.display = 'none';
+                    if (callback) callback();
+                }, 1000);
+            });
+        }
+        
+        function getCategoryPath(category) {
+            // Return the exact path coordinates as specified
+            const paths = {
+                'Hats': [
+                    {x: 1, y: 1}, {x: 1, y: 2}, {x: 1, y: 3}, {x: 1, y: 4},
+                    {x: 2, y: 4}, {x: 3, y: 4}, {x: 4, y: 4}, // HAT PICKUP
+                    {x: 4, y: 3}, {x: 5, y: 3}, {x: 6, y: 3}, {x: 7, y: 3},
+                    {x: 7, y: 4}, {x: 7, y: 5}, {x: 7, y: 6}, {x: 7, y: 7} // END
+                ],
+                'Perfumes': [
+                    {x: 1, y: 1}, {x: 1, y: 2}, {x: 1, y: 3}, {x: 1, y: 4},
+                    {x: 1, y: 5}, {x: 1, y: 6}, {x: 2, y: 6}, {x: 3, y: 6},
+                    {x: 4, y: 6}, // PERFUME PICKUP
+                    {x: 5, y: 6}, {x: 5, y: 7}, {x: 6, y: 7}, {x: 7, y: 7} // END
+                ],
+                'Bags': [
+                    {x: 1, y: 1}, {x: 2, y: 1}, {x: 3, y: 1}, {x: 4, y: 1},
+                    {x: 5, y: 1}, {x: 6, y: 1}, {x: 6, y: 2}, {x: 6, y: 3},
+                    {x: 6, y: 4}, // BAG PICKUP
+                    {x: 6, y: 5}, {x: 6, y: 7}, {x: 7, y: 7} // END
+                ],
+                'Sunglasses': [
+                    {x: 1, y: 1}, {x: 1, y: 2}, {x: 1, y: 3}, {x: 1, y: 4},
+                    {x: 1, y: 5}, {x: 1, y: 6}, {x: 1, y: 7}, {x: 2, y: 7},
+                    {x: 3, y: 7}, {x: 4, y: 7}, {x: 5, y: 7}, {x: 6, y: 7},
+                    {x: 6, y: 6}, // SUNGLASSES PICKUP
+                    {x: 6, y: 7}, {x: 7, y: 7} // END
+                ]
+            };
+            
+            return paths[category] || [];
+        }
+        
+        function animateRobotAlongPath(robotDot, pathCoordinates, canvasRect, callback) {
+            let currentIndex = 0;
+            const totalSteps = pathCoordinates.length;
+            const stepDuration = 5000 / totalSteps; // 5 seconds total, divided by number of steps
+            
+            function moveToNextPoint() {
+                if (currentIndex >= totalSteps) {
+                    if (callback) callback();
+                    return;
+                }
+                
+                const point = pathCoordinates[currentIndex];
+                // Position relative to canvas, not document
+                const x = point.x * gridSize + gridSize / 2 - 10;
+                const y = point.y * gridSize + gridSize / 2 - 10;
+                
+                robotDot.style.left = x + 'px';
+                robotDot.style.top = y + 'px';
+                
+                console.log(`Robot at (${point.x}, ${point.y})`);
+                currentIndex++;
+                
+                setTimeout(moveToNextPoint, stepDuration);
+            }
+            
+            moveToNextPoint();
+        }
+        
+        function completeOrderProcessing() {
+            const processingOrder = window.currentProcessingOrder;
+            if (!processingOrder) return;
+            
+            const { order, orderNumber } = processingOrder;
+            
+            console.log(`Order ${orderNumber} completely processed!`);
+            
+            // Update button state
+            const button = document.querySelector(`[data-order-id="${order.orderId}"]`);
+            if (button) {
+                button.disabled = false;
+                button.innerHTML = '<span>Completed</span>';
+                button.style.background = 'linear-gradient(135deg, #27ae60, #2ecc71)';
+            }
+            
+            // Remove completed order from queue data
+            if (ordersManager.currentQueueData) {
+                ordersManager.currentQueueData = ordersManager.currentQueueData.filter(
+                    queueOrder => queueOrder.orderId !== order.orderId
+                );
+                console.log(`Removed completed order ${orderNumber} from queue`);
+            }
+            
+            // Show completion notification
+            enhancedESP32Manager.showNotification(`Order ${orderNumber} completed successfully!`, 'success');
+            
+            // Clear processing state
+            window.currentProcessingOrder = null;
+            
+            // Update queue display immediately to show removal
+            setTimeout(() => {
+                const queueList = document.getElementById('queue-list');
+                const queueCount = document.getElementById('queue-count');
+                
+                if (ordersManager.currentQueueData && ordersManager.currentQueueData.length > 0) {
+                    // Refresh queue display with remaining orders
+                    ordersManager.displayQueue(ordersManager.currentQueueData);
+                } else {
+                    // Show empty queue
+                    queueCount.textContent = '0 Orders (0 items)';
+                    queueList.innerHTML = '<div class="no-orders">Queue is empty...</div>';
+                }
+            }, 2000);
+        }
+
+        // ==================== TEST FUNCTIONS ====================
+        function testOrderQueue() {
+            console.log('🧪 Testing Order Queue with sample data...');
+            
+            const now = new Date();
+            const testOrders = [
+                {
+                    orderId: "order_5A0931", // Order 1: 2x Bags (should be #1 in queue)
+                    status: "Order Placed",
+                    date: new Date(now.getTime() - (22 * 60 * 60 * 1000)), // 22 hours ago
+                    items: [
+                        {
+                            name: "Elegant Leather Handbag with Gold Clasp",
+                            quantity: 1,
+                            size: "One Size",
+                            price: 2999
+                        },
+                        {
+                            name: "Women White Mini Stylish Bag",
+                            quantity: 1,
+                            size: "One Size", 
+                            price: 1599
+                        }
+                    ]
+                },
+                {
+                    orderId: "order_82D1DD", // Order 2: 1x Bag + 1x Perfume (should be #2 in queue)
+                    status: "Order Placed", 
+                    date: new Date(now.getTime() - (21 * 60 * 60 * 1000)), // 21 hours ago
+                    items: [
+                        {
+                            name: "Women's Subtle Glow Eau de Parfum - Sheer Light",
+                            quantity: 1,
+                            size: "One Size",
+                            price: 1299
+                        },
+                        {
+                            name: "Designer Canvas Tote Bag",
+                            quantity: 1,
+                            size: "One Size",
+                            price: 899
+                        }
+                    ]
+                },
+                {
+                    orderId: "order_9F3ABC", // Order 3: Mixed items (should be #3 in queue)
+                    status: "Order Placed",
+                    date: new Date(now.getTime() - (20 * 60 * 60 * 1000)), // 20 hours ago
+                    items: [
+                        {
+                            name: "Unisex Aviator Sunglasses",
+                            quantity: 2,
+                            size: "One Size",
+                            price: 1199
+                        },
+                        {
+                            name: "Wide Brim Felt Hat",
+                            quantity: 1,
+                            size: "One Size",
+                            price: 1349
+                        },
+                        {
+                            name: "Women T-shirt", // This will be ignored (Others category)
+                            quantity: 1,
+                            size: "M",
+                            price: 599
+                        }
+                    ]
+                }
+            ];
+            
+            // Process the test orders
+            OrderTracking.processOrders(testOrders);
+        }
+
+        // Make test function globally available
+        window.testOrderQueue = testOrderQueue;
 
         // ==================== INITIALIZATION ====================
         document.addEventListener('DOMContentLoaded', () => {
@@ -2856,6 +3962,12 @@
                 if (e.target.classList.contains('manual-btn')) {
                     const command = e.target.dataset.command;
                     enhancedESP32Manager.sendCommand(command);
+                }
+                // Handle Start Order button clicks
+                if (e.target.classList.contains('start-order-btn')) {
+                    const orderId = e.target.dataset.orderId;
+                    const orderNumber = e.target.dataset.orderNumber;
+                    handleStartOrder(orderId, orderNumber);
                 }
             });
 
