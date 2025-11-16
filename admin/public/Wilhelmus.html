@@ -1,0 +1,4482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Automated Pathfinding with ESP32 Robot Control</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #fff;
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+            width: 100%;
+        }
+        
+        h1 {
+            color: #4ecca3;
+            margin-bottom: 10px;
+            font-size: 2.5rem;
+            text-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+        }
+        
+        .subtitle {
+            color: #eeeeee;
+            font-size: 1.2rem;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+            width: 100%;
+            max-width: 1800px; /* Increased to accommodate both panels */
+        }
+
+        /* Panel container for order tracking and queue */
+        .panels-container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            width: 350px;
+        }
+        
+        .controls {
+            background: rgba(26, 26, 46, 0.9);
+            border-radius: 12px;
+            padding: 25px;
+            width: 350px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .controls.hidden {
+            transform: translateX(-100%);
+            opacity: 0;
+            width: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+        
+        .toggle-controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: #4ecca3;
+            color: #232931;
+            border: none;
+            border-radius: 6px;
+            padding: 10px 15px;
+            cursor: pointer;
+            font-weight: bold;
+            z-index: 100;
+            transition: all 0.3s ease;
+        }
+        
+        .toggle-controls:hover {
+            background: #2e9c81;
+            transform: translateY(-2px);
+        }
+
+        /* Tab Styles */
+        .tabs {
+            display: flex;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 4px;
+            margin-bottom: 20px;
+            gap: 4px;
+        }
+        
+        .tab {
+            flex: 1;
+            padding: 12px 8px;
+            text-align: center;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+            font-weight: bold;
+            font-size: 0.9rem;
+            color: #eeeeee;
+        }
+        
+        .tab.active {
+            background: #4ecca3;
+            color: #232931;
+            box-shadow: 0 2px 8px rgba(78, 204, 163, 0.3);
+        }
+        
+        .tab:hover:not(.active) {
+            background: rgba(78, 204, 163, 0.2);
+        }
+        
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .section {
+            margin-bottom: 25px;
+        }
+        
+        h2 {
+            color: #4ecca3;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #4ecca3;
+            font-size: 1.4rem;
+        }
+        
+        h3 {
+            color: #4ecca3;
+            margin: 15px 0 10px;
+            font-size: 1.1rem;
+        }
+        
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0;
+            background: #4ecca3;
+            color: #232931;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+        
+        .btn:hover {
+            background: #2e9c81;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        
+        .btn.active {
+            background: #f95959;
+            color: white;
+        }
+        
+        .btn-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        
+        .visualization {
+            flex: 1;
+            min-width: 500px;
+            max-width: 700px;
+            position: relative;
+        }
+        
+        .orders-panel {
+            background: rgba(26, 26, 46, 0.9);
+            border-radius: 12px;
+            padding: 25px;
+            width: 350px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            max-height: 600px;
+            overflow-y: auto;
+            transition: all 0.3s ease;
+        }
+        
+        .orders-panel h2 {
+            color: #4ecca3;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #4ecca3;
+            font-size: 1.4rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .order-count {
+            background: #4ecca3;
+            color: #232931;
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-size: 0.9rem;
+            font-weight: bold;
+        }
+        
+        .order-item {
+            background: rgba(255, 255, 255, 0.05);
+            border-left: 3px solid #4ecca3;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 12px;
+            transition: all 0.3s ease;
+            animation: slideInRight 0.3s ease;
+        }
+        
+        @keyframes slideInRight {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        .order-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateX(-5px);
+        }
+        
+        .order-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            gap: 10px;
+        }
+
+        .order-number {
+            font-size: 0.9rem;
+            color: #f39c12;
+            font-weight: bold;
+            background: rgba(243, 156, 18, 0.1);
+            padding: 4px 8px;
+            border-radius: 8px;
+        }
+        
+        .order-id {
+            font-size: 0.85rem;
+            color: #4ecca3;
+            font-weight: bold;
+        }
+        
+        .order-status {
+            background: rgba(78, 204, 163, 0.2);
+            color: #4ecca3;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: bold;
+        }
+        
+        .order-products {
+            margin-top: 10px;
+        }
+        
+        .product-item {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 8px 12px;
+            border-radius: 4px;
+            margin-bottom: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9rem;
+        }
+        
+        .product-name {
+            color: #eeeeee;
+            flex: 1;
+        }
+        
+        .product-quantity {
+            background: #9b59b6;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        
+        .order-time {
+            font-size: 0.75rem;
+            color: #aaa;
+            margin-top: 8px;
+            text-align: right;
+        }
+        
+        .no-orders {
+            text-align: center;
+            padding: 40px 20px;
+            color: #aaa;
+            font-style: italic;
+        }
+        
+        .connection-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            font-size: 0.85rem;
+        }
+        
+        .connection-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #f95959;
+            animation: pulse 2s infinite;
+        }
+        
+        .connection-dot.connected {
+            background: #4ecca3;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .orders-panel::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .orders-panel::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+        }
+        
+        .orders-panel::-webkit-scrollbar-thumb {
+            background: #4ecca3;
+            border-radius: 4px;
+        }
+        
+        .orders-panel::-webkit-scrollbar-thumb:hover {
+            background: #2e9c81;
+        }
+
+        /* Queue-specific styles */
+        .queue-order-item {
+            background: rgba(255, 255, 255, 0.05);
+            border-left: 3px solid #f39c12;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 12px;
+            transition: all 0.3s ease;
+            animation: slideInRight 0.3s ease;
+        }
+
+        .queue-order-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateX(-3px);
+        }
+
+        .queue-order-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .queue-position {
+            background: #f39c12;
+            color: #232931;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+
+        .queue-order-id {
+            font-weight: bold;
+            color: #f39c12;
+            font-size: 0.85rem;
+        }
+
+        .queue-status {
+            color: #4ecca3;
+            font-size: 0.7rem;
+            background: rgba(78, 204, 163, 0.1);
+            padding: 2px 6px;
+            border-radius: 10px;
+            margin-left: auto;
+        }
+
+        .queue-order-summary {
+            margin-bottom: 8px;
+        }
+
+        .queue-categories {
+            font-weight: bold;
+            color: #f39c12;
+            font-size: 0.9rem;
+        }
+
+        .queue-order-details {
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding-top: 8px;
+        }
+
+        .queue-item-detail {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px 0;
+            font-size: 0.8rem;
+        }
+
+        .item-category {
+            background: rgba(243, 156, 18, 0.2);
+            color: #f39c12;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: bold;
+            min-width: 60px;
+            text-align: center;
+        }
+
+        .item-name {
+            color: #ddd;
+            flex: 1;
+            opacity: 0.9;
+        }
+
+        .item-quantity {
+            color: #aaa;
+            font-weight: bold;
+            min-width: 30px;
+            text-align: right;
+        }
+
+        .order-footer {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 10px;
+            margin-top: 10px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .start-order-btn {
+            background: linear-gradient(135deg, #4ecca3, #2e9c81);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .start-order-btn:hover {
+            background: linear-gradient(135deg, #2e9c81, #4ecca3);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+
+        .start-order-btn:active {
+            transform: translateY(0);
+        }
+
+        .start-order-btn:disabled {
+            background: #666;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        /* Queue panel inherits styles from .orders-panel */
+
+        #queue-panel h2 {
+            color: #f39c12;
+            border-bottom-color: #f39c12;
+        }
+
+        #queue-panel .order-count {
+            background: #f39c12;
+            color: #232931;
+        }
+        
+        #canvas {
+            display: block;
+            background: rgba(35, 41, 49, 0.8);
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            width: 100%;
+        }
+        
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            text-align: center;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .instructions {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+        }
+        
+        .instructions ul {
+            padding-left: 20px;
+            margin-top: 10px;
+            color: #eeeeee;
+        }
+        
+        .instructions li {
+            margin-bottom: 8px;
+            line-height: 1.4;
+        }
+        
+        .legend {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 15px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.9rem;
+        }
+        
+        .legend-color {
+            width: 15px;
+            height: 15px;
+            border-radius: 3px;
+        }
+        
+        .input-mode {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .mode-btn {
+            flex: 1;
+            text-align: center;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .mode-btn.active {
+            background: #4ecca3;
+            color: #232931;
+            font-weight: bold;
+        }
+        
+        .slider-container {
+            margin: 15px 0;
+        }
+        
+        .slider-container label {
+            display: block;
+            margin-bottom: 8px;
+            color: #4ecca3;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            height: 8px;
+            -webkit-appearance: none;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            outline: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #4ecca3;
+            cursor: pointer;
+        }
+        
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #f95959;
+        }
+        
+        .status-indicator.connected {
+            background: #4ecca3;
+        }
+        
+        .connection-type {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .connection-type-btn {
+            flex: 1;
+            text-align: center;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .connection-type-btn.active {
+            background: #4ecca3;
+            color: #232931;
+            font-weight: bold;
+        }
+        
+        .wifi-settings, .bluetooth-settings {
+            margin-top: 15px;
+        }
+        
+        .input-field {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            color: white;
+        }
+        
+        .input-field::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .manual-btn {
+            background: #3498db !important;
+        }
+
+        .manual-btn:hover {
+            background: #2980b9 !important;
+        }
+
+        .manual-btn[data-command="stop"] {
+            background: #f95959 !important;
+            grid-column: span 2;
+        }
+
+        .manual-btn[data-command="stop"]:hover {
+            background: #e74c3c !important;
+        }
+
+        .item-selection {
+            margin-top: 15px;
+        }
+        
+        .item-list {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        
+        .item-btn {
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            border: 2px solid transparent;
+        }
+        
+        .item-btn.active {
+            background: #9b59b6;
+            color: white;
+            font-weight: bold;
+            border-color: #8e44ad;
+        }
+        
+        .item-btn:hover {
+            background: rgba(155, 89, 182, 0.3);
+        }
+        
+        .legend-item.item {
+            background: #9b59b6;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 5px;
+            color: white;
+            z-index: 1000;
+            font-weight: bold;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            animation: slideIn 0.3s ease;
+        }
+
+        .notification.success {
+            background: #4ecca3;
+        }
+
+        .notification.error {
+            background: #f95959;
+        }
+
+        .notification.warning {
+            background: #ffa500;
+        }
+
+        .notification.info {
+            background: #3498db;
+        }
+        
+        .automation-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .automation-btn {
+            flex: 1;
+            text-align: center;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+        
+        .automation-btn.active {
+            background: #9b59b6;
+            color: white;
+            font-weight: bold;
+            border-color: #8e44ad;
+        }
+        
+        .automation-btn:hover {
+            background: rgba(155, 89, 182, 0.3);
+        }
+        
+        .robot-indicator {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: #ffeb3b;
+            border-radius: 50%;
+            z-index: 10;
+            box-shadow: 0 0 15px #ffeb3b;
+            transition: all 0.3s ease;
+            display: none;
+        }
+
+        .sync-status {
+            margin-top: 10px;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            font-size: 0.9rem;
+            text-align: center;
+        }
+
+        .cycle-status {
+            margin-top: 10px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            font-size: 0.9rem;
+            text-align: center;
+        }
+        
+        .cycle-status.active {
+            background: rgba(78, 204, 163, 0.2);
+            border: 1px solid #4ecca3;
+        }
+
+        .auto-algorithm-info {
+            margin-top: 10px;
+            padding: 8px;
+            background: rgba(155, 89, 182, 0.2);
+            border-radius: 4px;
+            font-size: 0.85rem;
+            text-align: center;
+            color: #eeeeee;
+        }
+
+        .hidden-section {
+            margin-top: 15px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 6px;
+            border-left: 3px solid #4ecca3;
+        }
+        
+        @media (max-width: 900px) {
+            .container {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .controls {
+                width: 100%;
+                max-width: 500px;
+            }
+            
+            .visualization {
+                width: 100%;
+                min-width: unset;
+            }
+            
+            .orders-panel {
+                width: 100%;
+                max-width: 500px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <button class="toggle-controls" id="toggle-controls">Hide Controls</button>
+    
+    <header>
+        <h1>Enhanced Automated Pathfinding with ESP32 Robot Control</h1>
+        <p class="subtitle">Real-time path traversal with obstruction detection and predefined item positions</p>
+    </header>
+    
+    <div class="container">
+        <div class="controls" id="controls-panel">
+            <!-- Tab Navigation -->
+            <div class="tabs">
+                <div class="tab active" data-tab="camera">Camera</div>
+                <div class="tab" data-tab="robot">Robot Control</div>
+                <div class="tab" data-tab="orders">Orders</div>
+                <div class="tab" data-tab="advanced">Advanced</div>
+            </div>
+
+            <!-- Camera Tab -->
+            <div class="tab-content active" id="camera-tab">
+                <div class="section">
+                    <h2>Camera Control</h2>
+                    <div class="slider-container">
+                        <label for="sensitivity">Obstacle Sensitivity</label>
+                        <input type="range" id="sensitivity" min="0" max="200" value="100">
+                    </div>
+                    <div class="btn-grid">
+                        <button id="start-camera" class="btn">Start Camera</button>
+                        <button id="stop-camera" class="btn" style="background: #f95959;">Stop Camera</button>
+                    </div>
+                </div>
+                
+                <div class="section">
+                    <h2>Environment Setup</h2>
+                    <button id="set-start" class="btn">Set Start Point</button>
+                    <button id="set-end" class="btn">Set End Point</button>
+                    <button id="reset" class="btn">Reset Points</button>
+                </div>
+            </div>
+
+            <!-- Robot Control Tab -->
+            <div class="tab-content" id="robot-tab">
+                <div class="section">
+                    <h2>Robot Control Mode</h2>
+                    <div class="automation-controls">
+                        <div class="automation-btn active" id="auto-mode">Auto</div>
+                        <div class="automation-btn" id="manual-mode-btn">Manual</div>
+                    </div>
+                    
+                    <div id="manual-controls" style="display: none; margin-top: 15px;">
+                        <h3>Manual Control</h3>
+                        <div class="btn-grid">
+                            <button class="btn manual-btn" data-command="forward">Forward</button>
+                            <button class="btn manual-btn" data-command="backward">Backward</button>
+                            <button class="btn manual-btn" data-command="left">Left</button>
+                            <button class="btn manual-btn" data-command="right">Right</button>
+                            <button class="btn manual-btn" data-command="stop">Stop</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="section">
+                    <h2>ESP32 Connection</h2>
+                    <div class="connection-type">
+                        <div class="connection-type-btn active" id="wifi-mode">WiFi</div>
+                        <div class="connection-type-btn" id="bluetooth-mode">Bluetooth</div>
+                    </div>
+                    
+                    <div id="wifi-settings" class="wifi-settings">
+                        <input type="text" id="wifi-ip" class="input-field" placeholder="ESP32 IP Address" value="192.168.4.1">
+                        <input type="text" id="wifi-port" class="input-field" placeholder="Port (default: 80)" value="80">
+                        <button id="connect-wifi" class="btn">Connect via WiFi</button>
+                    </div>
+                    
+                    <div id="bluetooth-settings" class="bluetooth-settings" style="display: none;">
+                        <button id="connect-bluetooth" class="btn">Connect via Bluetooth</button>
+                    </div>
+                    
+                    <div class="connection-status">
+                        <div class="status-indicator" id="connection-status"></div>
+                        <span id="connection-text">Disconnected</span>
+                    </div>
+
+                    <div class="sync-status" id="sync-status">
+                        Sync: Waiting for connection
+                    </div>
+                </div>
+            </div>
+
+            <!-- Orders Tab -->
+            <div class="tab-content" id="orders-tab">
+                <div class="section">
+                    <h2>Order Management</h2>
+                    <div class="item-selection">
+                        <p>Choose an item to pick up:</p>
+                        <div class="item-list">
+                            <div class="item-btn" data-item="hats">Hats</div>
+                            <div class="item-btn" data-item="perfumes">Perfumes</div>
+                            <div class="item-btn" data-item="bags">Bags</div>
+                            <div class="item-btn" data-item="sunglasses">Sunglasses</div>
+                        </div>
+                    </div>
+                    
+                    <div class="cycle-status" id="cycle-status">
+                        Ready for new order
+                    </div>
+                    
+                    <button id="start-delivery" class="btn" style="margin-top: 15px;">Start Delivery Cycle</button>
+                    <button id="add-to-queue" class="btn" style="background: #3498db; margin-top: 8px;">Add to Queue</button>
+                    <button id="return-to-start" class="btn" style="background: #e67e22; margin-top: 8px;">Return to Start Now</button>
+                    
+                    <!-- Test Section -->
+                    <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.2);">
+                        <p style="font-size: 0.9rem; color: #aaa; margin-bottom: 10px;">Testing:</p>
+                        <button id="test-queue" class="btn" style="background: #9b59b6;">Test Order Queue</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Advanced Tab -->
+            <div class="tab-content" id="advanced-tab">
+                <div class="section">
+                    <h2>Algorithm Selection</h2>
+                    <div class="auto-algorithm-info" id="auto-algorithm-info">
+                        Auto-selected: Dijkstra (Low obstacle density)
+                    </div>
+                    
+                    <div class="btn-grid">
+                        <button id="dijkstra" class="btn">Dijkstra</button>
+                        <button id="antcolony" class="btn">Ant Colony</button>
+                    </div>
+                    <button id="visualize" class="btn">Visualize Algorithm</button>
+                    
+                    <div class="hidden-section">
+                        <h3>Manual Obstacle Placement</h3>
+                        <div class="instructions">
+                            Click on grid to place obstacles. Drag to create multiple obstacles.
+                        </div>
+                        <button id="clear-obstacles" class="btn">Clear Obstacles</button>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h2>Robot Testing</h2>
+                    <div class="btn-grid">
+                        <button id="test-left" class="btn" style="background: #e74c3c;">Test Left Turn</button>
+                        <button id="test-right" class="btn" style="background: #e74c3c;">Test Right Turn</button>
+                        <button id="test-forward" class="btn" style="background: #e74c3c;">Test Forward</button>
+                        <button id="test-backward" class="btn" style="background: #e74c3c;">Test Backward</button>
+                    </div>
+                    <button id="full-test" class="btn" style="background: #e67e22; margin-top: 10px;">Full Movement Test</button>
+                    <button id="calibrate-turns" class="btn" style="background: #9b59b6; margin-top: 5px;">Calibrate Turns</button>
+                </div>
+                
+                <div class="section">
+                    <h2>Advanced Control</h2>
+                    <button id="send-commands" class="btn" disabled>Send Commands to Robot</button>
+                </div>
+                
+                <div class="section">
+                    <h2>Backend Configuration</h2>
+                    <input type="text" id="backend-url" class="input-field" placeholder="Backend URL (e.g., http://localhost:4000)" value="http://localhost:4000">
+                    <button id="update-backend-url" class="btn" style="background: #3498db;">Update Backend URL</button>
+                    <p style="font-size: 0.85rem; color: #aaa; margin-top: 10px;">
+                        Configure the backend URL to connect to your e-commerce order database. Default: http://localhost:4000
+                    </p>
+                </div>
+            </div>
+
+            <!-- Status Section (Always Visible) -->
+            <div class="section">
+                <h2>Status</h2>
+                <div class="status" id="status">Select input mode and set points</div>
+            </div>
+            
+            <div class="instructions">
+                <h3>Instructions:</h3>
+                <ul>
+                    <li>Predefined item positions: Hats(4,4), Perfumes(4,6), Bags(6,4), Sunglasses(6,6)</li>
+                    <li>In Auto mode: Set start and end points to automatically find path and send commands</li>
+                    <li>Real-time path traversal animation shows robot progress</li>
+                    <li>Obstruction detection alerts if path becomes blocked during travel</li>
+                    <li>In Manual mode: Use controls to manually operate the robot</li>
+                    <li>After delivery: Robot waits 15s for new orders, then returns to start point</li>
+                    <li>Add orders during wait period for immediate next delivery</li>
+                    <li>Default start point: (1,1) - Robot returns here if no new orders</li>
+                    <li>Use Testing section to diagnose and fix movement issues</li>
+                </ul>
+                
+                <div class="legend">
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #4ecca3;"></div>
+                        <span>Start</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #f95959;"></div>
+                        <span>End</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #393e46;"></div>
+                        <span>Wall</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #3498db;"></div>
+                        <span>Path</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #2ecc71;"></div>
+                        <span>Completed</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color item"></div>
+                        <span>Item</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #ffeb3b;"></div>
+                        <span>Robot</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="visualization">
+            <canvas id="canvas"></canvas>
+            <div class="robot-indicator" id="robot-indicator"></div>
+        </div>
+
+        <!-- Panels Container for Order Tracking and Queue -->
+        <div class="panels-container">
+            <!-- Real-time Orders Panel -->
+            <div class="orders-panel" id="orders-panel">
+                <h2>
+                    Order Tracking
+                    <span class="connection-indicator">
+                        <span class="connection-dot" id="orders-connection-dot"></span>
+                        <span id="orders-connection-text">Disconnected</span>
+                    </span>
+                </h2>
+                <div class="order-count" id="order-count">0 Orders</div>
+                <div id="orders-list" class="orders-list">
+                    <div class="no-orders">Waiting for orders...</div>
+                </div>
+            </div>
+
+            <!-- Order Queue Panel -->
+            <div class="orders-panel" id="queue-panel">
+                <h2>
+                    Order Queue
+                    <span class="connection-indicator">
+                        <span class="connection-dot connected" id="queue-connection-dot"></span>
+                        <span id="queue-connection-text">Active</span>
+                    </span>
+                </h2>
+                <div class="order-count" id="queue-count">0 Items</div>
+                <div id="queue-list" class="orders-list">
+                    <div class="no-orders">Queue is empty...</div>
+                </div>
+            </div>
+        </div>
+    </div>    <script>
+        // ==================== CORE APPLICATION VARIABLES ====================
+        const video = document.createElement('video');
+        video.autoplay = true;
+        video.playsInline = true;
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        canvas.width = 700;
+        canvas.height = 500;
+        
+        const gridSize = Math.min(canvas.width, canvas.height) / 9;
+        const cols = 9;
+        const rows = 9;
+        
+        const predefinedItems = {
+            'hats': {x: 4, y: 4},
+            'perfumes': {x: 4, y: 6},
+            'bags': {x: 6, y: 4},
+            'sunglasses': {x: 6, y: 6}
+        };
+        
+        let grid = [];
+        let startPoint = {x: 1, y: 1};
+        let endPoint = {x: 7, y: 7};
+        let itemPoint = null;
+        let selectedItem = null;
+        let path = [];
+        let completedPath = [];
+        let algorithm = 'auto';
+        let animationFrameId = null;
+        let inputMode = 'camera';
+        let automationMode = 'auto';
+        let isSettingStart = false;
+        let isSettingEnd = false;
+        let isSettingItem = false;
+        let isDragging = false;
+        let sensitivity = 100;
+        let robotPosition = null;
+        let isRobotMoving = false;
+        let originalPath = [];
+        let currentCommandIndex = 0;
+        let currentPathIndex = 0;
+
+        // Enhanced variables
+        let deliveryQueue = [];
+        let currentCycle = null;
+        let isWaitingForNextOrder = false;
+        let autoAlgorithmEnabled = true;
+        const defaultStartPoint = {x: 1, y: 1};
+        let currentRobotDirection = 0; // 0=right, 1=down, 2=left, 3=up
+
+        // ==================== IMPROVED PATH TO COMMANDS FUNCTION ====================
+        function pathToCommands(path) {
+            if (path.length < 2) return [];
+            
+            let commands = [];
+            let currentDirection = 0; // 0=right, 1=down, 2=left, 3=up
+            
+            let pickupPointIndex = -1;
+            if (itemPoint) {
+                for (let i = 0; i < path.length; i++) {
+                    if (path[i].x === itemPoint.x && path[i].y === itemPoint.y) {
+                        pickupPointIndex = i;
+                        break;
+                    }
+                }
+            }
+            
+            for (let i = 1; i < path.length; i++) {
+                const prev = path[i-1];
+                const curr = path[i];
+                
+                let targetDirection;
+                if (curr.x > prev.x) targetDirection = 0;      // Right
+                else if (curr.y > prev.y) targetDirection = 1; // Down
+                else if (curr.x < prev.x) targetDirection = 2; // Left
+                else if (curr.y < prev.y) targetDirection = 3; // Up
+                else continue; // Same position
+                
+                const turnDifference = (targetDirection - currentDirection + 4) % 4;
+                
+                // Improved turn handling with better logic
+                if (turnDifference === 1) {
+                    // Right turn (90° clockwise)
+                    commands.push('R');
+                } else if (turnDifference === 2) {
+                    // 180° turn - use two rights for consistency
+                    commands.push('R');
+                    commands.push('R');
+                } else if (turnDifference === 3) {
+                    // Left turn (90° counter-clockwise)
+                    commands.push('L');
+                }
+                
+                // Always move forward after any turns
+                commands.push('F');
+                currentDirection = targetDirection;
+                
+                // Add pickup command when reaching the item
+                if (pickupPointIndex === i) {
+                    commands.push('P');
+                }
+            }
+            
+            // Add release command at the end if we picked up an item
+            if (pickupPointIndex !== -1) {
+                commands.push('r');
+            }
+            
+            // Validate commands before returning
+            const validatedCommands = validateCommands(commands);
+            console.log('Generated commands:', validatedCommands);
+            return validatedCommands;
+        }
+
+        // ==================== IMPROVED COMMAND VALIDATION ====================
+        function validateCommands(commands) {
+            const validCommands = ['F', 'B', 'L', 'R', 'P', 'r'];
+            const validated = commands.filter(cmd => validCommands.includes(cmd));
+            
+            if (validated.length !== commands.length) {
+                console.warn('Invalid commands filtered out:', 
+                    commands.filter(cmd => !validCommands.includes(cmd)));
+            }
+            
+            return validated;
+        }
+
+        // ==================== ESP32 CONNECTION MANAGER ====================
+        const esp32Manager = {
+            ip: '192.168.4.1',
+            port: '80',
+            isConnected: false,
+            syncPolling: null,
+            
+            init() {
+                const savedIP = localStorage.getItem('esp32_ip');
+                const savedPort = localStorage.getItem('esp32_port');
+                
+                if (savedIP) {
+                    this.ip = savedIP;
+                    document.getElementById('wifi-ip').value = savedIP;
+                }
+                
+                if (savedPort) {
+                    this.port = savedPort;
+                    document.getElementById('wifi-port').value = savedPort;
+                }
+                
+                console.log('ESP32 Manager initialized');
+            },
+            
+            async connectWiFi() {
+                const ip = document.getElementById('wifi-ip').value || this.ip;
+                const port = document.getElementById('wifi-port').value || this.port;
+                
+                this.ip = ip;
+                this.port = port;
+                localStorage.setItem('esp32_ip', ip);
+                localStorage.setItem('esp32_port', port);
+                
+                try {
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 5000);
+                    
+                    const response = await fetch(`http://${ip}:${port}/`, {
+                        method: 'GET',
+                        mode: 'no-cors',
+                        signal: controller.signal
+                    });
+                    
+                    clearTimeout(timeoutId);
+                    
+                    this.isConnected = true;
+                    this.updateConnectionStatus(true, 'Connected via WiFi');
+                    this.showNotification('Connected to ESP32 successfully!', 'success');
+                    document.getElementById('manual-controls').style.display = 'block';
+                    this.updateSyncStatus('Connected - Ready for commands');
+                    
+                    return true;
+                } catch (error) {
+                    console.error('WiFi connection failed:', error);
+                    this.isConnected = false;
+                    this.updateConnectionStatus(false, 'Connection failed');
+                    this.showNotification('Connection failed. Please check IP and port.', 'error');
+                    this.updateSyncStatus('Connection failed');
+                    return false;
+                }
+            },
+            
+            async sendCommand(command) {
+                if (!this.isConnected) {
+                    this.showNotification('Not connected to ESP32', 'error');
+                    return false;
+                }
+                
+                try {
+                    const response = await fetch(`http://${this.ip}:${this.port}/${command}`, {
+                        method: 'GET',
+                        mode: 'no-cors'
+                    });
+                    
+                    console.log(`Command ${command} sent successfully`);
+                    return true;
+                } catch (error) {
+                    console.error('Command send failed:', error);
+                    this.showNotification(`Failed to send command: ${command}`, 'error');
+                    return false;
+                }
+            },
+            
+            async sendCommandSequenceWithSync(commands, path) {
+                if (!this.isConnected) {
+                    this.showNotification('Not connected to ESP32', 'error');
+                    return false;
+                }
+                
+                try {
+                    // First switch to automatic mode
+                    await fetch(`http://${this.ip}:${this.port}/mode?mode=auto`, {
+                        method: 'GET',
+                        mode: 'no-cors'
+                    });
+                    
+                    await new Promise(resolve => setTimeout(resolve, 800)); // Increased delay for mode change
+                    
+                    // Send the command sequence with improved formatting
+                    const commandString = commands.join(''); // Send as continuous string
+                    const response = await fetch(`http://${this.ip}:${this.port}/commands`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'text/plain'
+                        },
+                        body: commandString
+                    });
+                    
+                    this.showNotification(`Sent ${commands.length} commands to ESP32`, 'success');
+                    console.log('Command sequence sent:', commands);
+                    
+                    // Start synchronized animation with improved timing
+                    this.startSynchronizedAnimation(path, commands);
+                    
+                    return true;
+                } catch (error) {
+                    console.error('Command sequence send failed:', error);
+                    this.showNotification('Failed to send command sequence', 'error');
+                    return false;
+                }
+            },
+            
+            startSynchronizedAnimation(path, commands) {
+                window.isRobotMoving = true;
+                window.completedPath = [];
+                window.currentPathIndex = 0;
+                window.currentCommandIndex = 0;
+                window.originalPath = [...path];
+                
+                this.updateSyncStatus('Starting synchronized execution...');
+                this.processNextCommand(path, commands);
+            },
+            
+            async processNextCommand(path, commands) {
+                if (window.currentCommandIndex >= commands.length || !window.isRobotMoving) {
+                    window.isRobotMoving = false;
+                    updateRobotPosition(null);
+                    this.showNotification('Path traversal completed!', 'success');
+                    updateStatus('Path traversal completed!');
+                    this.updateSyncStatus('Sequence completed');
+                    return;
+                }
+                
+                const command = commands[window.currentCommandIndex];
+                this.updateSyncStatus(`Executing: ${window.currentCommandIndex + 1}/${commands.length} (${command})`);
+                
+                // Process command for animation
+                this.processCommandForAnimation(command, path);
+                
+                window.currentCommandIndex++;
+                
+                // Improved timing with better turn handling
+                let delay = 300; // Reduced base delay for smoother operation
+                
+                switch(command) {
+                    case 'F':
+                    case 'B':
+                        delay = 1500; // Reduced movement time
+                        break;
+                    case 'L':
+                        delay = 1200; // Left turn time (slightly longer for stability)
+                        break;
+                    case 'R':
+                        delay = 1200; // Right turn time
+                        break;
+                    case 'P':
+                    case 'r':
+                        delay = 800; // Reduced pickup/release time
+                        break;
+                }
+                
+                setTimeout(() => {
+                    this.processNextCommand(path, commands);
+                }, delay);
+            },
+            
+            processCommandForAnimation(command, path) {
+                console.log(`Animating command: ${command}, Path index: ${window.currentPathIndex}`);
+                
+                // Update robot direction for turns
+                if (command === 'L' || command === 'R' || command === 'B') {
+                    updateRobotDirection(command);
+                }
+                
+                switch(command) {
+                    case 'F':
+                        if (window.currentPathIndex < path.length - 1) {
+                            window.currentPathIndex++;
+                            window.completedPath.push({...path[window.currentPathIndex]});
+                            updateRobotPosition(path[window.currentPathIndex]);
+                            this.showNotification('Moving forward', 'info');
+                        }
+                        break;
+                    case 'B':
+                        if (window.currentPathIndex > 0) {
+                            window.currentPathIndex--;
+                            window.completedPath.push({...path[window.currentPathIndex]});
+                            updateRobotPosition(path[window.currentPathIndex]);
+                            this.showNotification('Moving backward', 'info');
+                        }
+                        break;
+                    case 'L':
+                        this.showNotification('Turning left', 'info');
+                        // Left turn - position doesn't change but orientation does
+                        break;
+                    case 'R':
+                        this.showNotification('Turning right', 'info');
+                        // Right turn - position doesn't change but orientation does
+                        break;
+                    case 'P':
+                        this.showNotification(`Picking up ${currentCycle?.item || 'item'}...`, 'info');
+                        break;
+                    case 'r':
+                        this.showNotification(`Releasing ${currentCycle?.item || 'item'} at drop-off...`, 'info');
+                        break;
+                }
+                
+                drawGrid();
+                
+                if (checkForObstructions()) {
+                    window.isRobotMoving = false;
+                    this.showNotification('Obstruction detected! Path is blocked.', 'error');
+                    updateStatus('Obstruction detected! Path is blocked.');
+                    this.updateSyncStatus('Obstruction detected!');
+                    
+                    // Stop the current cycle
+                    if (currentCycle) {
+                        currentCycle = null;
+                        isWaitingForNextOrder = false;
+                    }
+                }
+            },
+            
+            updateSyncStatus(message) {
+                document.getElementById('sync-status').textContent = `Sync: ${message}`;
+            },
+            
+            updateConnectionStatus(connected, message) {
+                const statusIndicator = document.getElementById('connection-status');
+                const statusText = document.getElementById('connection-text');
+                const sendButton = document.getElementById('send-commands');
+                
+                if (connected) {
+                    statusIndicator.classList.add('connected');
+                    statusText.textContent = message;
+                    sendButton.disabled = false;
+                } else {
+                    statusIndicator.classList.remove('connected');
+                    statusText.textContent = message;
+                    sendButton.disabled = true;
+                    this.updateSyncStatus('Disconnected');
+                }
+            },
+            
+            showNotification(message, type = 'info') {
+                const notification = document.createElement('div');
+                notification.className = `notification ${type}`;
+                notification.textContent = message;
+                document.body.appendChild(notification);
+                
+                // Completion notifications disappear after 2.5 seconds
+                const timeout = message.includes('completed successfully') ? 2500 : 3000;
+                
+                setTimeout(() => {
+                    notification.style.opacity = '0';
+                    setTimeout(() => notification.remove(), 300);
+                }, timeout);
+            },
+
+            // Add a function to test individual movements
+            async testMovement() {
+                if (!this.isConnected) {
+                    this.showNotification('Not connected to ESP32', 'error');
+                    return;
+                }
+                
+                this.showNotification('Testing robot movements...', 'info');
+                
+                // Test sequence: Forward, Left, Forward, Right, Backward
+                const testCommands = ['F', 'L', 'F', 'R', 'B'];
+                
+                for (let i = 0; i < testCommands.length; i++) {
+                    const cmd = testCommands[i];
+                    this.showNotification(`Testing: ${cmd}`, 'info');
+                    await this.sendCommand(cmd);
+                    await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds between commands
+                }
+                
+                this.showNotification('Movement test completed', 'success');
+            }
+        };
+
+        // ==================== ENHANCED DELIVERY CYCLE MANAGEMENT ====================
+        const enhancedESP32Manager = {
+            ...esp32Manager,
+            
+            async startDeliveryCycle(item, startPoint, endPoint) {
+                if (!this.isConnected) {
+                    this.showNotification('Not connected to ESP32', 'error');
+                    return false;
+                }
+
+                updateStatus(`Starting delivery cycle for ${item}`);
+                this.updateSyncStatus('Starting delivery cycle...');
+
+                const selectedAlgorithm = autoAlgorithmEnabled ? selectBestAlgorithm() : algorithm;
+                const pathToItem = findPathBetweenPoints(startPoint, predefinedItems[item]);
+                const pathToEnd = findPathBetweenPoints(predefinedItems[item], endPoint);
+                
+                if (pathToItem.length === 0 || pathToEnd.length === 0) {
+                    this.showNotification(`No path available for ${item} delivery`, 'error');
+                    return false;
+                }
+
+                const fullPath = [...pathToItem, ...pathToEnd.slice(1)];
+                const commands = pathToCommands(fullPath);
+                
+                const itemIndex = pathToItem.length - 1;
+                commands.splice(itemIndex + 1, 0, 'P');
+                commands.push('r');
+
+                await this.executeDeliveryCycle(commands, fullPath, item, endPoint);
+                return true;
+            },
+
+            async executeDeliveryCycle(commands, path, item, endPoint) {
+                currentCycle = {
+                    item: item,
+                    commands: commands,
+                    path: path,
+                    endPoint: endPoint
+                };
+
+                const success = await this.sendCommandSequenceWithSync(commands, path);
+                
+                if (success) {
+                    setTimeout(() => {
+                        this.startWaitingPeriod(endPoint);
+                    }, this.calculateTotalCycleTime(commands));
+                }
+                
+                return success;
+            },
+
+            calculateTotalCycleTime(commands) {
+                let totalTime = 0;
+                commands.forEach(cmd => {
+                    switch(cmd) {
+                        case 'F':
+                        case 'B':
+                            totalTime += 1500;
+                            break;
+                        case 'L':
+                        case 'R':
+                            totalTime += 1200;
+                            break;
+                        case 'P':
+                        case 'r':
+                            totalTime += 800;
+                            break;
+                    }
+                    totalTime += 100;
+                });
+                return totalTime;
+            },
+
+            startWaitingPeriod(currentPosition) {
+                isWaitingForNextOrder = true;
+                const waitTime = 15000;
+                
+                updateStatus(`Cycle completed. Waiting ${waitTime/1000}s for new orders at drop-off point`);
+                this.updateSyncStatus(`Waiting for new orders (${waitTime/1000}s)`);
+                
+                const cycleStatus = document.getElementById('cycle-status');
+                cycleStatus.textContent = `Waiting for new orders... (${waitTime/1000}s)`;
+                cycleStatus.classList.add('active');
+
+                let timeLeft = waitTime / 1000;
+                const countdown = setInterval(() => {
+                    timeLeft--;
+                    cycleStatus.textContent = `Waiting for new orders... (${timeLeft}s)`;
+                    
+                    if (timeLeft <= 0) {
+                        clearInterval(countdown);
+                        // No orders received - return to default starting point
+                        this.returnToStartPoint(currentPosition);
+                    }
+                }, 1000);
+
+                currentCycle.waitCountdown = countdown;
+                currentCycle.waitEndTime = Date.now() + waitTime;
+                currentCycle.currentPosition = currentPosition;
+            },
+
+            async returnToStartPoint(currentPosition) {
+                if (!this.isConnected) {
+                    this.showNotification('Not connected to ESP32', 'error');
+                    return;
+                }
+
+                updateStatus('No new orders. Returning to default starting point...');
+                this.updateSyncStatus('Returning to start point');
+                
+                const cycleStatus = document.getElementById('cycle-status');
+                cycleStatus.textContent = 'Returning to start point...';
+                cycleStatus.classList.add('active');
+
+                // Calculate path back to start point
+                const returnPath = findPathBetweenPoints(currentPosition, defaultStartPoint);
+                
+                if (returnPath.length === 0) {
+                    this.showNotification('No path available to return to start point', 'error');
+                    this.endWaitingPeriod(currentPosition);
+                    return;
+                }
+
+                const returnCommands = pathToCommands(returnPath);
+                
+                if (returnCommands.length > 0) {
+                    // Execute return journey
+                    const success = await this.executeReturnJourney(returnCommands, returnPath);
+                    
+                    if (success) {
+                        this.showNotification('Successfully returned to starting point', 'success');
+                        // Update the start point to the default position
+                        resetStartPointOnGrid(defaultStartPoint);
+                    }
+                }
+                
+                this.endWaitingPeriod(defaultStartPoint);
+            },
+
+            async executeReturnJourney(commands, path) {
+                return new Promise((resolve) => {
+                    window.isRobotMoving = true;
+                    window.completedPath = [];
+                    window.currentPathIndex = 0;
+                    window.currentCommandIndex = 0;
+                    window.originalPath = [...path];
+                    
+                    this.updateSyncStatus('Returning to start point...');
+
+                    let commandIndex = 0;
+                    
+                    function processNextCommand() {
+                        if (commandIndex >= commands.length || !window.isRobotMoving) {
+                            window.isRobotMoving = false;
+                            resolve(true);
+                            return;
+                        }
+                        
+                        const command = commands[commandIndex];
+                        enhancedESP32Manager.updateSyncStatus(`Returning: ${commandIndex + 1}/${commands.length} (${command})`);
+                        
+                        // Process command for animation
+                        if (command === 'L' || command === 'R' || command === 'B') {
+                            updateRobotDirection(command);
+                        }
+                        
+                        switch(command) {
+                            case 'F':
+                                if (window.currentPathIndex < path.length - 1) {
+                                    window.currentPathIndex++;
+                                    window.completedPath.push({...path[window.currentPathIndex]});
+                                    updateRobotPosition(path[window.currentPathIndex]);
+                                }
+                                break;
+                            case 'B':
+                                if (window.currentPathIndex > 0) {
+                                    window.currentPathIndex--;
+                                    window.completedPath.push({...path[window.currentPathIndex]});
+                                    updateRobotPosition(path[window.currentPathIndex]);
+                                }
+                                break;
+                            case 'L':
+                            case 'R':
+                                // Turn commands - no position change in animation
+                                break;
+                        }
+                        
+                        drawGrid();
+                        commandIndex++;
+                        
+                        // Schedule next command with proper timing
+                        let delay = 300;
+                        switch(command) {
+                            case 'F':
+                            case 'B':
+                                delay = 1500;
+                                break;
+                            case 'L':
+                            case 'R':
+                                delay = 1200;
+                                break;
+                        }
+                        
+                        setTimeout(processNextCommand, delay);
+                    }
+                    
+                    // Send commands to ESP32 for return journey
+                    this.sendCommandSequenceWithSync(commands, path)
+                        .then(() => {
+                            processNextCommand();
+                        })
+                        .catch(error => {
+                            console.error('Return journey failed:', error);
+                            resolve(false);
+                        });
+                });
+            },
+
+            endWaitingPeriod(finalPosition) {
+                isWaitingForNextOrder = false;
+                currentCycle = null;
+                
+                updateStatus('Ready for new orders at starting point');
+                this.updateSyncStatus('Ready at start point');
+                
+                const cycleStatus = document.getElementById('cycle-status');
+                cycleStatus.textContent = 'Ready at starting point';
+                cycleStatus.classList.remove('active');
+
+                // Process next item in queue if any (using final position as new start)
+                this.processNextInQueue(finalPosition);
+            },
+
+            processNextInQueue(currentPosition) {
+                if (deliveryQueue.length > 0 && !isWaitingForNextOrder) {
+                    const nextItem = deliveryQueue.shift();
+                    startPoint = {...currentPosition};
+                    this.startDeliveryCycle(nextItem, startPoint, endPoint);
+                }
+            }
+        };
+
+        // ==================== IMPROVED DIRECTION TRACKING ====================
+        function updateRobotDirection(turnCommand) {
+            if (turnCommand === 'L') {
+                currentRobotDirection = (currentRobotDirection + 3) % 4; // -90°
+            } else if (turnCommand === 'R') {
+                currentRobotDirection = (currentRobotDirection + 1) % 4; // +90°
+            } else if (turnCommand === 'B') {
+                currentRobotDirection = (currentRobotDirection + 2) % 4; // 180°
+            }
+            console.log(`Robot direction updated to: ${currentRobotDirection}`);
+        }
+
+        // ==================== ENHANCED ANIMATION WITH DIRECTION ====================
+        function updateRobotPosition(position) {
+            const robotIndicator = document.getElementById('robot-indicator');
+            if (position) {
+                robotIndicator.style.display = 'block';
+                robotIndicator.style.left = (position.x * gridSize + gridSize/2 - 10) + 'px';
+                robotIndicator.style.top = (position.y * gridSize + gridSize/2 - 10) + 'px';
+                
+                // Add direction indicator
+                let rotation = 0;
+                switch(currentRobotDirection) {
+                    case 0: rotation = 0; break;    // Right
+                    case 1: rotation = 90; break;   // Down
+                    case 2: rotation = 180; break;  // Left
+                    case 3: rotation = 270; break;  // Up
+                }
+                robotIndicator.style.transform = `rotate(${rotation}deg)`;
+                
+                robotPosition = position;
+            } else {
+                robotIndicator.style.display = 'none';
+                robotPosition = null;
+            }
+        }
+
+        // ==================== PATHFINDING FUNCTIONS ====================
+        function initializeGrid() {
+            grid = [];
+            
+            for (let y = 0; y < rows; y++) {
+                grid[y] = [];
+                for (let x = 0; x < cols; x++) {
+                    grid[y][x] = {
+                        isWall: false,
+                        isStart: x === startPoint.x && y === startPoint.y,
+                        isEnd: x === endPoint.x && y === endPoint.y,
+                        isItem: false
+                    };
+                }
+            }
+            
+            for (const [item, position] of Object.entries(predefinedItems)) {
+                grid[position.y][position.x].isItem = true;
+                grid[position.y][position.x].itemType = item;
+            }
+            
+            drawGrid();
+            updateStatus('Set start and end points, then select an item to pick up');
+        }
+        
+        function drawGrid() {
+            ctx.fillStyle = '#232931';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            for (let y = 0; y < rows; y++) {
+                for (let x = 0; x < cols; x++) {
+                    const cell = grid[y][x];
+                    let color = '#232931';
+                    
+                    if (cell.isStart) color = '#4ecca3';
+                    else if (cell.isEnd) color = '#f95959';
+                    // Show ALL item locations UNLESS automation is running (selectedItem is set)
+                    else if (cell.isItem) {
+                        // During automation: only show current selected item
+                        // Initial state: show all purple squares
+                        if (window.selectedItem) {
+                            // Automation mode - only show selected item
+                            if (cell.itemType === window.selectedItem.toLowerCase()) {
+                                color = '#9b59b6';
+                            }
+                        } else {
+                            // Initial/normal mode - show all items
+                            color = '#9b59b6';
+                        }
+                    }
+                    else if (cell.isWall) color = '#393e46';
+                    
+                    ctx.fillStyle = color;
+                    ctx.fillRect(x * gridSize, y * gridSize, gridSize, gridSize);
+                    
+                    ctx.strokeStyle = '#2d4059';
+                    ctx.strokeRect(x * gridSize, y * gridSize, gridSize, gridSize);
+                    
+                    // Show labels for items
+                    if (cell.isItem && cell.itemType) {
+                        // During automation: only label selected item
+                        // Initial state: label all items
+                        const shouldShowLabel = !window.selectedItem || cell.itemType === window.selectedItem.toLowerCase();
+                        
+                        if (shouldShowLabel) {
+                            ctx.fillStyle = 'white';
+                            ctx.font = 'bold 12px Arial';
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+                            ctx.fillText(
+                                cell.itemType.charAt(0).toUpperCase() + cell.itemType.slice(1, 3), 
+                                x * gridSize + gridSize/2, 
+                                y * gridSize + gridSize/2
+                            );
+                        }
+                    }
+                }
+            }
+            
+            // Draw yellow robot if position exists
+            if (window.robotPosition) {
+                // Draw glowing effect (outer circle)
+                ctx.fillStyle = 'rgba(255, 215, 0, 0.3)'; // Semi-transparent gold
+                ctx.beginPath();
+                ctx.arc(
+                    window.robotPosition.x * gridSize + gridSize / 2,
+                    window.robotPosition.y * gridSize + gridSize / 2,
+                    gridSize / 2.5, // Larger outer glow
+                    0,
+                    Math.PI * 2
+                );
+                ctx.fill();
+                
+                // Draw main robot (solid yellow circle)
+                ctx.fillStyle = '#FFD700'; // Bright yellow/gold
+                ctx.beginPath();
+                ctx.arc(
+                    window.robotPosition.x * gridSize + gridSize / 2,
+                    window.robotPosition.y * gridSize + gridSize / 2,
+                    gridSize / 3.5, // Main robot size
+                    0,
+                    Math.PI * 2
+                );
+                ctx.fill();
+                
+                // Add a border for better visibility
+                ctx.strokeStyle = '#FFA500'; // Orange border
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
+            
+            if (path.length > 0) {
+                drawPath();
+            }
+            
+            if (completedPath.length > 0) {
+                drawCompletedPath();
+            }
+        }
+        
+        function drawPath() {
+            ctx.strokeStyle = '#3498db';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            
+            for (let i = 0; i < path.length; i++) {
+                if (i === 0) {
+                    ctx.moveTo(path[i].x * gridSize + gridSize/2, path[i].y * gridSize + gridSize/2);
+                } else {
+                    ctx.lineTo(path[i].x * gridSize + gridSize/2, path[i].y * gridSize + gridSize/2);
+                }
+            }
+            
+            ctx.stroke();
+        }
+        
+        function drawCompletedPath() {
+            ctx.strokeStyle = '#2ecc71';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            
+            for (let i = 0; i < completedPath.length; i++) {
+                if (i === 0) {
+                    ctx.moveTo(completedPath[i].x * gridSize + gridSize/2, completedPath[i].y * gridSize + gridSize/2);
+                } else {
+                    ctx.lineTo(completedPath[i].x * gridSize + gridSize/2, completedPath[i].y * gridSize + gridSize/2);
+                }
+            }
+            
+            ctx.stroke();
+        }
+        
+        function checkForObstructions() {
+            if (!window.originalPath || window.currentPathIndex >= window.originalPath.length) {
+                return false;
+            }
+            
+            for (let i = window.currentPathIndex; i < window.originalPath.length; i++) {
+                const point = window.originalPath[i];
+                if (grid[point.y][point.x].isWall) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // Helper function to reset start point on grid
+        function resetStartPointOnGrid(newStartPoint) {
+            // Clear old start point
+            for (let y = 0; y < rows; y++) {
+                for (let x = 0; x < cols; x++) {
+                    if (grid[y][x].isStart) {
+                        grid[y][x].isStart = false;
+                    }
+                }
+            }
+            
+            // Set new start point
+            grid[newStartPoint.y][newStartPoint.x].isStart = true;
+            grid[newStartPoint.y][newStartPoint.x].isWall = false;
+            grid[newStartPoint.y][newStartPoint.x].isItem = false;
+            
+            startPoint = {...newStartPoint};
+            drawGrid();
+        }
+
+        function updateStatus(message) {
+            document.getElementById('status').textContent = message;
+        }
+
+        function heuristic(a, b) {
+            return Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
+        }
+
+        function findPath() {
+            // CRITICAL FIX: Use window.selectedItem (set by autoCalculatePath) instead of local variable
+            const currentSelectedItem = window.selectedItem || selectedItem;
+            const currentItemPoint = window.itemPoint || itemPoint;
+            
+            console.log(`\n   [findPath] Called with:`);
+            console.log(`      - window.selectedItem: "${window.selectedItem}"`);
+            console.log(`      - local selectedItem: "${selectedItem}"`);
+            console.log(`      - currentSelectedItem (using): "${currentSelectedItem}"`);
+            console.log(`      - predefinedItems has "${currentSelectedItem}"? ${currentSelectedItem && predefinedItems[currentSelectedItem] ? 'YES' : 'NO'}`);
+            
+            if (currentSelectedItem && predefinedItems[currentSelectedItem]) {
+                // Use predefinedItems as authoritative source for item location
+                const targetItemPoint = predefinedItems[currentSelectedItem];
+                itemPoint = targetItemPoint; // Update local
+                window.itemPoint = targetItemPoint; // Update window
+                
+                console.log(`      - Using itemPoint: (${itemPoint.x}, ${itemPoint.y})`);
+                console.log(`      - Calculating: Start(${startPoint.x},${startPoint.y}) → Item(${itemPoint.x},${itemPoint.y}) → End(${endPoint.x},${endPoint.y})`);
+                
+                const pathToItem = findPathBetweenPoints(startPoint, itemPoint);
+                console.log(`      - Path to item: ${pathToItem.length} steps`);
+                
+                const pathFromItemToEnd = findPathBetweenPoints(itemPoint, endPoint);
+                console.log(`      - Path from item to end: ${pathFromItemToEnd.length} steps`);
+                
+                if (pathToItem.length > 0 && pathFromItemToEnd.length > 0) {
+                    path = [...pathToItem, ...pathFromItemToEnd.slice(1)];
+                    window.path = path; // Update window.path immediately!
+                    console.log(`      ✅ Combined path: ${path.length} total steps`);
+                    console.log(`      ✅ window.path updated with ${window.path.length} steps`);
+                    updateStatus(`Path found with ${algorithm} (${path.length} steps) via ${currentSelectedItem} pickup`);
+                } else {
+                    path = [];
+                    window.path = [];
+                    console.log(`      ❌ Path blocked!`);
+                    enhancedESP32Manager.showNotification(`No available path to ${currentSelectedItem}. Path is blocked.`, 'error');
+                    updateStatus(`No available path to ${currentSelectedItem}. Path is blocked.`);
+                }
+            } else {
+                console.log(`      - No item selected, calculating direct path`);
+                path = findPathBetweenPoints(startPoint, endPoint);
+                window.path = path; // Update window.path
+                
+                if (path.length > 0) {
+                    console.log(`      ✅ Direct path: ${path.length} steps`);
+                    updateStatus(`Path found with ${algorithm} (${path.length} steps)`);
+                } else {
+                    path = [];
+                    window.path = [];
+                    console.log(`      ❌ No path found!`);
+                    enhancedESP32Manager.showNotification('No path found! Path is blocked.', 'error');
+                    updateStatus('No path found! Path is blocked.');
+                }
+            }
+        }
+
+        function findPathBetweenPoints(start, end) {
+            let algoToUse = algorithm;
+            
+            // If auto mode, select best algorithm
+            if (algoToUse === 'auto') {
+                algoToUse = selectBestAlgorithm();
+            }
+            
+            // Execute the selected algorithm
+            switch(algoToUse) {
+                case 'dijkstra':
+                    return dijkstra(start, end);
+                case 'aco':
+                case 'antcolony':
+                    return antColonyOptimization(start, end);
+                default:
+                    return dijkstra(start, end); // Default to dijkstra
+            }
+        }
+
+        function selectBestAlgorithm() {
+            if (!autoAlgorithmEnabled) {
+                return algorithm;
+            }
+            
+            let obstacleCount = 0;
+            for (let y = 0; y < rows; y++) {
+                for (let x = 0; x < cols; x++) {
+                    if (grid[y][x].isWall) obstacleCount++;
+                }
+            }
+            
+            const complexity = obstacleCount / (cols * rows);
+            let selectedAlgo;
+            
+            if (complexity < 0.2) {
+                selectedAlgo = 'dijkstra';
+            } else if (complexity < 0.5) {
+                selectedAlgo = 'antcolony';
+            } else {
+                selectedAlgo = 'antcolony';
+            }
+            
+            const algoInfo = document.getElementById('auto-algorithm-info');
+            const complexityText = complexity < 0.2 ? 'Low' : complexity < 0.5 ? 'Medium' : 'High';
+            algoInfo.textContent = `Auto-selected: ${selectedAlgo.toUpperCase()} (${complexityText} obstacle density)`;
+            
+            return selectedAlgo;
+        }
+
+        function dijkstra(start, end) {
+            const distances = Array(rows).fill().map(() => Array(cols).fill(Infinity));
+            const prev = Array(rows).fill().map(() => Array(cols).fill(null));
+            const queue = [];
+            
+            distances[start.y][start.x] = 0;
+            queue.push({...start, distance: 0});
+            
+            while (queue.length > 0) {
+                queue.sort((a, b) => a.distance - b.distance);
+                const current = queue.shift();
+                
+                if (current.x === end.x && current.y === end.y) {
+                    const path = [];
+                    let temp = {...end};
+                    while (temp !== null) {
+                        path.push(temp);
+                        temp = prev[temp.y][temp.x];
+                    }
+                    return path.reverse();
+                }
+                
+                const neighbors = [
+                    {x: current.x, y: current.y - 1},
+                    {x: current.x + 1, y: current.y},
+                    {x: current.x, y: current.y + 1},
+                    {x: current.x - 1, y: current.y}
+                ];
+                
+                for (const neighbor of neighbors) {
+                    if (neighbor.x >= 0 && neighbor.x < cols && 
+                        neighbor.y >= 0 && neighbor.y < rows && 
+                        !grid[neighbor.y][neighbor.x].isWall) {
+                        
+                        const alt = distances[current.y][current.x] + 1;
+                        if (alt < distances[neighbor.y][neighbor.x]) {
+                            distances[neighbor.y][neighbor.x] = alt;
+                            prev[neighbor.y][neighbor.x] = {...current};
+                            queue.push({...neighbor, distance: alt});
+                        }
+                    }
+                }
+            }
+            
+            return [];
+        }
+
+        function antColonyOptimization(start, end) {
+            const ants = 10;
+            const iterations = 50;
+            const evaporation = 0.5;
+            const alpha = 1.0;
+            const beta = 2.0;
+            
+            let pheromones = Array(rows).fill().map(() => Array(cols).fill(1));
+            let bestPath = [];
+            let bestLength = Infinity;
+            
+            for (let iter = 0; iter < iterations; iter++) {
+                const antPaths = [];
+                const antLengths = [];
+                
+                for (let a = 0; a < ants; a++) {
+                    let current = {...start};
+                    let path = [current];
+                    let visited = new Set([`${current.x},${current.y}`]);
+                    let length = 0;
+                    
+                    while (!(current.x === end.x && current.y === end.y)) {
+                        const neighbors = [
+                            {x: current.x, y: current.y - 1},
+                            {x: current.x + 1, y: current.y},
+                            {x: current.x, y: current.y + 1},
+                            {x: current.x - 1, y: current.y}
+                        ].filter(n => 
+                            n.x >= 0 && n.x < cols && 
+                            n.y >= 0 && n.y < rows && 
+                            !grid[n.y][n.x].isWall &&
+                            !visited.has(`${n.x},${n.y}`)
+                        );
+                        
+                        if (neighbors.length === 0) break;
+                        
+                        const probabilities = neighbors.map(n => {
+                            const h = 1 / (heuristic(n, end) + 1);
+                            return Math.pow(pheromones[n.y][n.x], alpha) * Math.pow(h, beta);
+                        });
+                        
+                        const total = probabilities.reduce((sum, p) => sum + p, 0);
+                        const probs = probabilities.map(p => p / total);
+                        
+                        let rand = Math.random();
+                        let selectedIndex = 0;
+                        for (let i = 0; i < probs.length; i++) {
+                            rand -= probs[i];
+                            if (rand <= 0) {
+                                selectedIndex = i;
+                                break;
+                            }
+                        }
+                        
+                        current = neighbors[selectedIndex];
+                        path.push(current);
+                        visited.add(`${current.x},${current.y}`);
+                        length++;
+                    }
+                    
+                    if (current.x === end.x && current.y === end.y) {
+                        antPaths.push(path);
+                        antLengths.push(length);
+                        
+                        if (length < bestLength) {
+                            bestPath = path;
+                            bestLength = length;
+                        }
+                    }
+                }
+                
+                for (let y = 0; y < rows; y++) {
+                    for (let x = 0; x < cols; x++) {
+                        pheromones[y][x] *= evaporation;
+                    }
+                }
+                
+                for (let a = 0; a < antPaths.length; a++) {
+                    const path = antPaths[a];
+                    const deposit = 1 / antLengths[a];
+                    
+                    for (const point of path) {
+                        pheromones[point.y][point.x] += deposit;
+                    }
+                }
+            }
+            
+            return bestPath;
+        }
+
+        // ==================== CAMERA FUNCTIONS ====================
+        function processFrame() {
+            if (video.readyState === video.HAVE_ENOUGH_DATA && inputMode === 'camera') {
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imageData.data;
+                
+                createGridFromImage(data);
+                
+                if (isRobotMoving && checkForObstructions()) {
+                    isRobotMoving = false;
+                    enhancedESP32Manager.showNotification('Obstruction detected! Path is blocked.', 'error');
+                    updateStatus('Obstruction detected! Path is blocked.');
+                    enhancedESP32Manager.updateSyncStatus('Obstruction detected!');
+                }
+                
+                drawGridOverlay();
+                
+                if (startPoint && endPoint) {
+                    findPath();
+                    drawPath();
+                }
+            }
+            
+            animationFrameId = requestAnimationFrame(processFrame);
+        }
+        
+        function createGridFromImage(data) {
+            if (inputMode === 'camera') {
+                for (let y = 0; y < rows; y++) {
+                    for (let x = 0; x < cols; x++) {
+                        if ((x === startPoint.x && y === startPoint.y) || 
+                            (x === endPoint.x && y === endPoint.y) ||
+                            (itemPoint && x === itemPoint.x && y === itemPoint.y) ||
+                            Object.values(predefinedItems).some(pos => pos.x === x && pos.y === y)) {
+                            continue;
+                        }
+                        grid[y][x].isWall = false;
+                    }
+                }
+            }
+            
+            for (let y = 0; y < rows; y++) {
+                for (let x = 0; x < cols; x++) {
+                    if ((x === startPoint.x && y === startPoint.y) || 
+                        (x === endPoint.x && y === endPoint.y) ||
+                        (itemPoint && x === itemPoint.x && y === itemPoint.y) ||
+                        Object.values(predefinedItems).some(pos => pos.x === x && pos.y === y)) {
+                        continue;
+                    }
+                    
+                    let darkPoints = 0;
+                    const samples = 9;
+                    const sampleStep = Math.floor(gridSize / 3);
+                    
+                    for (let sy = 0; sy < 3; sy++) {
+                        for (let sx = 0; sx < 3; sx++) {
+                            const sampleX = x * gridSize + sx * sampleStep;
+                            const sampleY = y * gridSize + sy * sampleStep;
+                            
+                            if (sampleX < canvas.width && sampleY < canvas.height) {
+                                const pixelIndex = (Math.floor(sampleY) * canvas.width + Math.floor(sampleX)) * 4;
+                                const r = data[pixelIndex];
+                                const g = data[pixelIndex + 1];
+                                const b = data[pixelIndex + 2];
+                                const brightness = (r + g + b) / 3;
+                                
+                                if (brightness < sensitivity) {
+                                    darkPoints++;
+                                }
+                            }
+                        }
+                    }
+                    
+                    if (inputMode === 'camera') {
+                        grid[y][x].isWall = darkPoints >= 5;
+                    }
+                }
+            }
+        }
+        
+        function drawGridOverlay() {
+            for (let y = 0; y < rows; y++) {
+                for (let x = 0; x < cols; x++) {
+                    if (grid[y][x].isWall) {
+                        ctx.fillStyle = 'rgba(57, 62, 70, 0.7)';
+                        ctx.fillRect(x * gridSize, y * gridSize, gridSize, gridSize);
+                    }
+                    
+                    ctx.strokeStyle = 'rgba(45, 64, 89, 0.3)';
+                    ctx.strokeRect(x * gridSize, y * gridSize, gridSize, gridSize);
+                }
+            }
+            
+            // Draw green start point
+            ctx.fillStyle = '#4ecca3';
+            ctx.beginPath();
+            ctx.arc(startPoint.x * gridSize + gridSize/2, startPoint.y * gridSize + gridSize/2, 8, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Draw red end point
+            ctx.fillStyle = '#f95959';
+            ctx.beginPath();
+            ctx.arc(endPoint.x * gridSize + gridSize/2, endPoint.y * gridSize + gridSize/2, 8, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Draw purple item point (CRITICAL - must be visible in camera mode!)
+            if (itemPoint) {
+                // Draw purple square at item location
+                ctx.fillStyle = '#9b59b6';
+                ctx.fillRect(
+                    itemPoint.x * gridSize,
+                    itemPoint.y * gridSize,
+                    gridSize,
+                    gridSize
+                );
+                
+                // Add label
+                if (selectedItem) {
+                    ctx.fillStyle = 'white';
+                    ctx.font = 'bold 14px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(
+                        selectedItem.charAt(0).toUpperCase() + selectedItem.slice(1, 3), 
+                        itemPoint.x * gridSize + gridSize/2, 
+                        itemPoint.y * gridSize + gridSize/2
+                    );
+                }
+            }
+            
+            // Draw blue path if it exists in camera mode
+            if (path.length > 0) {
+                ctx.strokeStyle = '#3498db';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                
+                for (let i = 0; i < path.length; i++) {
+                    if (i === 0) {
+                        ctx.moveTo(path[i].x * gridSize + gridSize/2, path[i].y * gridSize + gridSize/2);
+                    } else {
+                        ctx.lineTo(path[i].x * gridSize + gridSize/2, path[i].y * gridSize + gridSize/2);
+                    }
+                }
+                
+                ctx.stroke();
+            }
+        }
+
+        async function getRearCamera() {
+            try {
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const videoDevices = devices.filter(device => device.kind === 'videoinput');
+                
+                let rearCamera = null;
+                
+                for (const device of videoDevices) {
+                    if (device.label.toLowerCase().includes('back') || 
+                        device.label.toLowerCase().includes('rear')) {
+                        rearCamera = device;
+                        break;
+                    }
+                }
+                
+                if (!rearCamera && videoDevices.length > 1) {
+                    for (const device of videoDevices) {
+                        try {
+                            const stream = await navigator.mediaDevices.getUserMedia({
+                                video: { deviceId: device.deviceId }
+                            });
+                            
+                            const track = stream.getVideoTracks()[0];
+                            const settings = track.getSettings();
+                            
+                            if (settings.facingMode === 'environment') {
+                                rearCamera = device;
+                                track.stop();
+                                break;
+                            }
+                            track.stop();
+                        } catch (e) {
+                            console.error('Error checking camera:', e);
+                        }
+                    }
+                }
+                
+                if (!rearCamera && videoDevices.length > 1) {
+                    rearCamera = videoDevices[videoDevices.length - 1];
+                }
+                
+                if (rearCamera) {
+                    return {
+                        video: {
+                            deviceId: { exact: rearCamera.deviceId }
+                        }
+                    };
+                } else {
+                    return {
+                        video: {
+                            facingMode: 'environment'
+                        }
+                    };
+                }
+            } catch (error) {
+                console.error('Error getting rear camera:', error);
+                return {
+                    video: {
+                        facingMode: 'environment'
+                    }
+                };
+            }
+        }
+        
+        async function startCamera() {
+            try {
+                const constraints = await getRearCamera();
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                
+                video.srcObject = stream;
+                updateStatus('Rear camera access granted. Click to set start and end points.');
+                if (animationFrameId) cancelAnimationFrame(animationFrameId);
+                processFrame();
+            } catch (err) {
+                console.error('Error accessing rear camera:', err);
+                updateStatus('Camera error: ' + err.message);
+            }
+        }
+
+        // ==================== EVENT HANDLERS ====================
+        function handleCanvasClick(e) {
+            const rect = canvas.getBoundingClientRect();
+            const x = Math.floor((e.clientX - rect.left) / gridSize);
+            const y = Math.floor((e.clientY - rect.top) / gridSize);
+            
+            if (x < 0 || x >= cols || y < 0 || y >= rows) return;
+            
+            if (isSettingStart) {
+                grid[startPoint.y][startPoint.x].isStart = false;
+                startPoint = {x, y};
+                grid[y][x].isStart = true;
+                grid[y][x].isWall = false;
+                grid[y][x].isItem = false;
+                isSettingStart = false;
+                updateStatus(`Start point set at (${x}, ${y}). Set end point or select an item.`);
+                
+                if (automationMode === 'auto' && startPoint && endPoint && enhancedESP32Manager.isConnected) {
+                    setTimeout(automatePathfinding, 500);
+                }
+            } 
+            else if (isSettingEnd) {
+                grid[endPoint.y][endPoint.x].isEnd = false;
+                endPoint = {x, y};
+                grid[y][x].isEnd = true;
+                grid[y][x].isWall = false;
+                grid[y][x].isItem = false;
+                isSettingEnd = false;
+                updateStatus(`End point set at (${x}, ${y}). Select an item or visualize algorithm.`);
+                
+                if (automationMode === 'auto' && startPoint && endPoint && enhancedESP32Manager.isConnected) {
+                    setTimeout(automatePathfinding, 500);
+                }
+            }
+            else if (isSettingItem) {
+                if (!grid[y][x].isWall) {
+                    if (itemPoint) {
+                        grid[itemPoint.y][itemPoint.x].isItem = false;
+                    }
+                    itemPoint = {x, y};
+                    grid[y][x].isItem = true;
+                    grid[y][x].isWall = false;
+                    grid[y][x].isStart = false;
+                    grid[y][x].isEnd = false;
+                    isSettingItem = false;
+                    updateStatus(`${selectedItem ? selectedItem.charAt(0).toUpperCase() + selectedItem.slice(1) : 'Item'} placed at (${x}, ${y}).`);
+                    
+                    if (automationMode === 'auto' && startPoint && endPoint && itemPoint && enhancedESP32Manager.isConnected) {
+                        setTimeout(automatePathfinding, 500);
+                    }
+                } else {
+                    updateStatus('Cannot place item on an obstacle. Choose a different cell.');
+                }
+            }
+            else if (inputMode === 'manual') {
+                if (!grid[y][x].isStart && !grid[y][x].isEnd && !grid[y][x].isItem) {
+                    grid[y][x].isWall = !grid[y][x].isWall;
+                    updateStatus(`Obstacle ${grid[y][x].isWall ? 'placed' : 'removed'} at (${x}, ${y})`);
+                }
+            } else {
+                if (!grid[y][x].isStart && !grid[y][x].isEnd && !grid[y][x].isItem) {
+                    if (!grid[startPoint.y][startPoint.x].isStart) {
+                        grid[y][x].isStart = true;
+                        startPoint = {x, y};
+                        updateStatus(`Start point set at (${x}, ${y}). Click to set end point.`);
+                    } else if (!grid[endPoint.y][endPoint.x].isEnd) {
+                        grid[y][x].isEnd = true;
+                        endPoint = {x, y};
+                        updateStatus(`End point set at (${x}, ${y}). Calculating path...`);
+                        
+                        if (automationMode === 'auto' && startPoint && endPoint && enhancedESP32Manager.isConnected) {
+                            setTimeout(automatePathfinding, 500);
+                        }
+                    } else {
+                        grid[startPoint.y][startPoint.x].isStart = false;
+                        grid[y][x].isStart = true;
+                        startPoint = {x, y};
+                        endPoint = null;
+                        itemPoint = null;
+                        path = [];
+                        updateStatus(`Start point set at (${x}, ${y}). Click to set end point.`);
+                    }
+                }
+            }
+            
+            if (inputMode === 'manual') {
+                drawGrid();
+            }
+        }
+
+        function automatePathfinding() {
+            if (!enhancedESP32Manager.isConnected) {
+                updateStatus('Cannot automate: ESP32 not connected');
+                return;
+            }
+            
+            if (!startPoint || !endPoint) {
+                updateStatus('Cannot automate: Start and end points not set');
+                return;
+            }
+            
+            updateStatus('Automating pathfinding process...');
+            
+            const selectedAlgorithm = selectBestAlgorithm();
+            updateStatus(`Selected algorithm: ${selectedAlgorithm}`);
+            
+            findPathWithAlgorithm(selectedAlgorithm);
+            
+            if (path.length > 0) {
+                const commands = pathToCommands(path);
+                
+                if (commands.length > 0) {
+                    enhancedESP32Manager.sendCommandSequenceWithSync(commands, path);
+                    updateStatus(`Automation complete: Sent ${commands.length} commands to robot`);
+                } else {
+                    updateStatus('Automation failed: No commands generated');
+                }
+            } else {
+                updateStatus('Automation failed: No path found');
+            }
+        }
+
+        function findPathWithAlgorithm(algo) {
+            algorithm = algo;
+            findPath();
+            if (inputMode === 'manual') {
+                drawGrid();
+            }
+        }
+
+        async function connectToESP32Bluetooth() {
+            if (!navigator.bluetooth) {
+                enhancedESP32Manager.showNotification('Web Bluetooth API not supported in this browser.', 'error');
+                return;
+            }
+            
+            try {
+                const bluetoothDevice = await navigator.bluetooth.requestDevice({
+                    filters: [
+                        { namePrefix: 'ESP32' },
+                        { services: ['6e400001-b5a3-f393-e0a9-e50e24dcca9e'] }
+                    ]
+                });
+                
+                const server = await bluetoothDevice.gatt.connect();
+                const service = await server.getPrimaryService('6e400001-b5a3-f393-e0a9-e50e24dcca9e');
+                const bluetoothCharacteristic = await service.getCharacteristic('6e400002-b5a3-f393-e0a9-e50e24dcca9e');
+                
+                enhancedESP32Manager.isConnected = true;
+                enhancedESP32Manager.updateConnectionStatus(true, 'Connected via Bluetooth');
+                enhancedESP32Manager.showNotification('Bluetooth connected successfully!', 'success');
+                document.getElementById('manual-controls').style.display = 'block';
+                enhancedESP32Manager.updateSyncStatus('Connected - Ready for commands');
+                
+                bluetoothDevice.addEventListener('gattserverdisconnected', () => {
+                    enhancedESP32Manager.isConnected = false;
+                    enhancedESP32Manager.updateConnectionStatus(false, 'Disconnected');
+                    enhancedESP32Manager.showNotification('Disconnected from ESP32', 'error');
+                    enhancedESP32Manager.updateSyncStatus('Disconnected');
+                });
+                
+            } catch (error) {
+                enhancedESP32Manager.showNotification('Bluetooth connection failed: ' + error.message, 'error');
+            }
+        }
+        
+        async function sendCommandsToESP32() {
+            if (path.length === 0) {
+                enhancedESP32Manager.showNotification('No path to send. Please calculate a path first.', 'error');
+                return;
+            }
+            
+            try {
+                const commands = pathToCommands(path);
+                if (commands.length === 0) {
+                    enhancedESP32Manager.showNotification('No commands generated from path.', 'error');
+                    return;
+                }
+                
+                const commandString = commands.join('');
+                enhancedESP32Manager.showNotification(`Sending ${commands.length} commands to ESP32...`, 'info');
+                
+                await enhancedESP32Manager.sendCommandSequenceWithSync(commands, path);
+                
+            } catch (error) {
+                console.error('Error sending commands:', error);
+                enhancedESP32Manager.showNotification('Error sending commands to ESP32', 'error');
+            }
+        }
+
+        // ==================== TAB MANAGEMENT ====================
+        function initializeTabs() {
+            const tabs = document.querySelectorAll('.tab');
+            const tabContents = document.querySelectorAll('.tab-content');
+            
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    const tabId = tab.dataset.tab;
+                    
+                    tabs.forEach(t => t.classList.remove('active'));
+                    tabContents.forEach(tc => tc.classList.remove('active'));
+                    
+                    tab.classList.add('active');
+                    document.getElementById(`${tabId}-tab`).classList.add('active');
+                });
+            });
+        }
+
+        // ==================== ENHANCED EVENT LISTENERS ====================
+        function addEnhancedEventListeners() {
+            // Start delivery cycle
+            document.getElementById('start-delivery').addEventListener('click', () => {
+                if (!selectedItem) {
+                    enhancedESP32Manager.showNotification('Please select an item first', 'warning');
+                    return;
+                }
+                if (!enhancedESP32Manager.isConnected) {
+                    enhancedESP32Manager.showNotification('Please connect to ESP32 first', 'error');
+                    return;
+                }
+                
+                enhancedESP32Manager.startDeliveryCycle(selectedItem, startPoint, endPoint);
+            });
+            
+            // Add to queue - this will interrupt the waiting period if active
+            document.getElementById('add-to-queue').addEventListener('click', () => {
+                if (!selectedItem) {
+                    enhancedESP32Manager.showNotification('Please select an item first', 'warning');
+                    return;
+                }
+                
+                // If we're in waiting period, clear the countdown and start immediately
+                if (isWaitingForNextOrder && currentCycle) {
+                    clearInterval(currentCycle.waitCountdown);
+                    isWaitingForNextOrder = false;
+                    
+                    enhancedESP32Manager.showNotification(`Starting immediate delivery for ${selectedItem}`, 'info');
+                    enhancedESP32Manager.startDeliveryCycle(selectedItem, currentCycle.currentPosition, endPoint);
+                } else {
+                    deliveryQueue.push(selectedItem);
+                    enhancedESP32Manager.showNotification(`Added ${selectedItem} to delivery queue`, 'info');
+                    updateStatus(`${selectedItem} added to queue. Queue length: ${deliveryQueue.length}`);
+                }
+            });
+
+            // Return to start button
+            document.getElementById('return-to-start').addEventListener('click', () => {
+                if (robotPosition && enhancedESP32Manager.isConnected) {
+                    if (isWaitingForNextOrder && currentCycle) {
+                        clearInterval(currentCycle.waitCountdown);
+                    }
+                    enhancedESP32Manager.returnToStartPoint(robotPosition);
+                } else {
+                    enhancedESP32Manager.showNotification('Robot not in a valid position or not connected', 'warning');
+                }
+            });
+
+            // Testing buttons
+            document.getElementById('test-left').addEventListener('click', () => {
+                enhancedESP32Manager.sendCommand('L');
+                enhancedESP32Manager.showNotification('Testing left turn', 'info');
+            });
+            
+            document.getElementById('test-right').addEventListener('click', () => {
+                enhancedESP32Manager.sendCommand('R');
+                enhancedESP32Manager.showNotification('Testing right turn', 'info');
+            });
+            
+            document.getElementById('test-forward').addEventListener('click', () => {
+                enhancedESP32Manager.sendCommand('F');
+                enhancedESP32Manager.showNotification('Testing forward movement', 'info');
+            });
+            
+            document.getElementById('test-backward').addEventListener('click', () => {
+                enhancedESP32Manager.sendCommand('B');
+                enhancedESP32Manager.showNotification('Testing backward movement', 'info');
+            });
+            
+            document.getElementById('full-test').addEventListener('click', () => {
+                enhancedESP32Manager.testMovement();
+            });
+            
+            document.getElementById('test-queue').addEventListener('click', () => {
+                testOrderQueue();
+            });
+
+            document.getElementById('calibrate-turns').addEventListener('click', async () => {
+                enhancedESP32Manager.showNotification('Calibrating turns...', 'info');
+                
+                // Calibration sequence
+                const calibrationCommands = ['L', 'R', 'L', 'R', 'L', 'R'];
+                
+                for (let i = 0; i < calibrationCommands.length; i++) {
+                    const cmd = calibrationCommands[i];
+                    enhancedESP32Manager.showNotification(`Calibration step ${i + 1}: ${cmd}`, 'info');
+                    await enhancedESP32Manager.sendCommand(cmd);
+                    await new Promise(resolve => setTimeout(resolve, 1500)); // Wait 1.5 seconds between turns
+                }
+                
+                enhancedESP32Manager.showNotification('Turn calibration completed', 'success');
+            });
+            
+            // Stop camera button
+            document.getElementById('stop-camera').addEventListener('click', () => {
+                if (animationFrameId) {
+                    cancelAnimationFrame(animationFrameId);
+                    animationFrameId = null;
+                }
+                if (video.srcObject) {
+                    video.srcObject.getTracks().forEach(track => track.stop());
+                    video.srcObject = null;
+                }
+                updateStatus('Camera stopped');
+                enhancedESP32Manager.showNotification('Camera stopped', 'info');
+            });
+            
+            // Manual algorithm selection override
+            document.getElementById('dijkstra').addEventListener('click', () => {
+                algorithm = 'dijkstra';
+                autoAlgorithmEnabled = false;
+                updateStatus('Dijkstra algorithm selected manually');
+                enhancedESP32Manager.showNotification('Dijkstra algorithm selected', 'info');
+            });
+            
+            document.getElementById('antcolony').addEventListener('click', () => {
+                algorithm = 'antcolony';
+                autoAlgorithmEnabled = false;
+                updateStatus('Ant Colony algorithm selected manually');
+                enhancedESP32Manager.showNotification('Ant Colony algorithm selected', 'info');
+            });
+        }
+
+        // ==================== REAL-TIME ORDERS MANAGEMENT ====================
+        const ordersManager = {
+            backendURL: 'http://localhost:4000', // Change this to your backend URL
+            pollingInterval: 3000, // Poll every 3 seconds
+            pollingTimer: null,
+            currentOrders: [],
+            isConnected: false,
+            
+            init() {
+                console.log('🔄 Initializing Orders Manager');
+                this.startPolling();
+            },
+            
+            startPolling() {
+                console.log('▶️ Starting orders polling');
+                this.fetchOrders(); // Fetch immediately
+                
+                this.pollingTimer = setInterval(() => {
+                    this.fetchOrders();
+                }, this.pollingInterval);
+            },
+            
+            stopPolling() {
+                console.log('⏹️ Stopping orders polling');
+                if (this.pollingTimer) {
+                    clearInterval(this.pollingTimer);
+                    this.pollingTimer = null;
+                }
+            },
+            
+            async fetchOrders() {
+                try {
+                    const response = await fetch(`${this.backendURL}/api/order/active`, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        this.updateConnectionStatus(true);
+                        this.processOrders(data.orders);
+                    } else {
+                        console.error('Failed to fetch orders:', data.message);
+                        this.updateConnectionStatus(false);
+                    }
+                    
+                } catch (error) {
+                    console.error('Error fetching orders:', error);
+                    this.updateConnectionStatus(false);
+                }
+            },
+            
+            processOrders(orders) {
+                // Check if orders have changed
+                const ordersChanged = JSON.stringify(orders) !== JSON.stringify(this.currentOrders);
+                
+                if (ordersChanged) {
+                    console.log(`📦 Orders updated: ${orders.length} active orders`);
+                    this.currentOrders = orders;
+                    this.displayOrders(orders);
+                }
+            },
+            
+            displayOrders(orders) {
+                const ordersList = document.getElementById('orders-list');
+                const orderCount = document.getElementById('order-count');
+                
+                // Update count
+                orderCount.textContent = `${orders.length} ${orders.length === 1 ? 'Order' : 'Orders'}`;
+                
+                if (orders.length === 0) {
+                    ordersList.innerHTML = '<div class="no-orders">Waiting for orders...</div>';
+                    return;
+                }
+                
+                // Group items by product name and sum quantities
+                const processedOrders = orders.map(order => {
+                    const itemsMap = new Map();
+                    
+                    order.items.forEach(item => {
+                        const key = item.name || item._id;
+                        if (itemsMap.has(key)) {
+                            itemsMap.get(key).quantity += item.quantity;
+                        } else {
+                            itemsMap.set(key, {
+                                name: item.name,
+                                quantity: item.quantity,
+                                size: item.size || 'N/A',
+                                price: item.price || 0
+                            });
+                        }
+                    });
+                    
+                    return {
+                        ...order,
+                        processedItems: Array.from(itemsMap.values())
+                    };
+                });
+                
+                // Sort orders by date (oldest first) for consistent numbering
+                processedOrders.sort((a, b) => new Date(a.date) - new Date(b.date));
+                
+                // Build HTML
+                let html = '';
+                processedOrders.forEach((order, index) => {
+                    const orderDate = new Date(order.date);
+                    const timeAgo = this.getTimeAgo(orderDate);
+                    const orderNumber = index + 1;
+                    
+                    html += `
+                        <div class="order-item" data-order-id="${order.orderId}" data-order-number="${orderNumber}">
+                            <div class="order-header">
+                                <div class="order-number">Order ${orderNumber}</div>
+                                <div class="order-id">#${order.orderId.slice(-6).toUpperCase()}</div>
+                                <div class="order-status">${order.status}</div>
+                            </div>
+                            <div class="order-products">
+                    `;
+                    
+                    order.processedItems.forEach(item => {
+                        html += `
+                            <div class="product-item">
+                                <span class="product-name">${item.name || 'Unknown Product'}</span>
+                                <span class="product-quantity">[${item.quantity}]</span>
+                            </div>
+                        `;
+                    });
+                    
+                    html += `
+                            </div>
+                            <div class="order-footer">
+                                <div class="order-time">${timeAgo}</div>
+                                <button class="start-order-btn" data-order-id="${order.orderId}" data-order-number="${orderNumber}">
+                                    Start Order
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                ordersList.innerHTML = html;
+                
+                // Also process the queue
+                this.processQueue(processedOrders);
+            },
+
+            processQueue(orders) {
+                const queueItems = [];
+                console.log('🔄 Processing queue for orders:', orders);
+                
+                // Products lookup with orderProduct field
+                const productsLookup = {
+                    // Jewelry Products - Others
+                    "pearl1": { orderProduct: "Others" },
+                    "pearl2": { orderProduct: "Others" },
+                    "pearl3": { orderProduct: "Others" },
+                    "pearl4": { orderProduct: "Others" },
+                    "pearl5": { orderProduct: "Others" },
+                    "pearl6": { orderProduct: "Others" },
+                    "pearl7": { orderProduct: "Others" },
+                    "pearl8": { orderProduct: "Others" },
+                    "pearl9": { orderProduct: "Others" },
+
+                    // Perfumes
+                    "per1": { orderProduct: "Perfumes" },
+                    "per2": { orderProduct: "Perfumes" },
+                    "per3": { orderProduct: "Perfumes" },
+                    "per4": { orderProduct: "Perfumes" },
+                    "per5": { orderProduct: "Perfumes" },
+                    "per6": { orderProduct: "Perfumes" },
+                    "per7": { orderProduct: "Perfumes" },
+                    "per8": { orderProduct: "Perfumes" },
+                    "per9": { orderProduct: "Perfumes" },
+                    "per10": { orderProduct: "Perfumes" },
+                    "per11": { orderProduct: "Perfumes" },
+                    "per12": { orderProduct: "Perfumes" },
+
+                    // Sunglasses
+                    "glass1": { orderProduct: "Sunglasses" },
+                    "glass2": { orderProduct: "Sunglasses" },
+                    "glass3": { orderProduct: "Sunglasses" },
+                    "glass4": { orderProduct: "Sunglasses" },
+                    "glass5": { orderProduct: "Sunglasses" },
+                    "glass6": { orderProduct: "Sunglasses" },
+                    "glass7": { orderProduct: "Sunglasses" },
+                    "glass8": { orderProduct: "Sunglasses" },
+                    "glass9": { orderProduct: "Sunglasses" },
+                    "glass10": { orderProduct: "Sunglasses" },
+                    "glass11": { orderProduct: "Sunglasses" },
+                    "glass12": { orderProduct: "Sunglasses" },
+                    "glass13": { orderProduct: "Sunglasses" },
+                    "glass14": { orderProduct: "Sunglasses" },
+                    "glass15": { orderProduct: "Sunglasses" },
+                    "glass16": { orderProduct: "Sunglasses" },
+                    "glass17": { orderProduct: "Sunglasses" },
+
+                    // Bags
+                    "bag1": { orderProduct: "Bags" },
+                    "bag2": { orderProduct: "Bags" },
+                    "bag3": { orderProduct: "Bags" },
+                    "bag4": { orderProduct: "Bags" },
+                    "bag5": { orderProduct: "Bags" },
+                    "bag6": { orderProduct: "Bags" },
+                    "bag7": { orderProduct: "Bags" },
+                    "bag8": { orderProduct: "Bags" },
+                    "bag9": { orderProduct: "Bags" },
+                    "bag10": { orderProduct: "Bags" },
+                    "bag11": { orderProduct: "Bags" },
+                    "bag12": { orderProduct: "Bags" },
+                    "bag13": { orderProduct: "Bags" },
+
+                    // Hats
+                    "hat1": { orderProduct: "Hats" },
+                    "hat2": { orderProduct: "Hats" },
+                    "hat3": { orderProduct: "Hats" },
+                    "hat4": { orderProduct: "Hats" },
+                    "hat5": { orderProduct: "Hats" },
+                    "hat6": { orderProduct: "Hats" },
+                    "hat7": { orderProduct: "Hats" },
+                    "hat8": { orderProduct: "Hats" },
+
+                    // Topwear, Footwear, etc. - Others (ignored in queue)
+                    // These are set to "Others" and will be filtered out
+                };
+
+                // Extract orders with queue-eligible items (only Hats, Sunglasses, Perfumes, Bags)
+                const queueOrders = [];
+                
+                orders.forEach(order => {
+                    const orderQueueItems = [];
+                    
+                    order.processedItems.forEach(item => {
+                        // Try to match by name or _id
+                        const productData = this.findProductByName(item.name, productsLookup);
+                        console.log(`📦 Product: "${item.name}" -> Category: "${productData?.orderProduct || 'Not found'}"`);
+                        
+                        if (productData && ['Hats', 'Sunglasses', 'Perfumes', 'Bags'].includes(productData.orderProduct)) {
+                            console.log(`✅ Adding to queue: ${item.name} (${productData.orderProduct}) x ${item.quantity}`);
+                            
+                            orderQueueItems.push({
+                                productName: item.name,
+                                category: productData.orderProduct,
+                                quantity: item.quantity
+                            });
+                        } else {
+                            console.log(`❌ Skipping: ${item.name} (${productData?.orderProduct || 'Not found'})`);
+                        }
+                    });
+                    
+                    // Only add order to queue if it has eligible items
+                    if (orderQueueItems.length > 0) {
+                        queueOrders.push({
+                            orderId: order.orderId,
+                            orderDate: new Date(order.date),
+                            orderTimestamp: order.date,
+                            status: order.status,
+                            items: orderQueueItems
+                        });
+                    }
+                });
+
+                // Sort queue orders by order date (oldest first - FIFO)
+                queueOrders.sort((a, b) => {
+                    return new Date(a.orderTimestamp) - new Date(b.orderTimestamp);
+                });
+
+                console.log('🔄 Queue orders sorted by date (oldest first):', queueOrders.map(order => ({
+                    orderId: order.orderId.slice(-6),
+                    items: order.items.map(item => `${item.quantity}x ${item.category}`).join(', '),
+                    date: order.orderDate.toLocaleString()
+                })));
+
+                // Store queue data for automation access
+                this.currentQueueData = queueOrders;
+
+                this.displayQueue(queueOrders);
+            },
+
+            findProductByName(productName, productsLookup) {
+                // Direct ID lookup first
+                for (const [id, data] of Object.entries(productsLookup)) {
+                    if (id === productName) {
+                        return data;
+                    }
+                }
+
+                // Fuzzy matching by name patterns
+                const name = productName.toLowerCase();
+                
+                // Bag patterns - comprehensive matching
+                if (name.includes('bag') || name.includes('handbag') || name.includes('clutch') || 
+                    name.includes('tote') || name.includes('purse') || name.includes('satchel') ||
+                    name.includes('backpack') || name.includes('messenger') || name.includes('shoulder bag') ||
+                    name.includes('crossbody') || name.includes('wallet') || name.includes('pouch')) {
+                    return { orderProduct: "Bags" };
+                }
+                
+                // Hat patterns - comprehensive matching
+                if (name.includes('hat') || name.includes('cap') || name.includes('fedora') || 
+                    name.includes('brim') || name.includes('beanie') || name.includes('beret') ||
+                    name.includes('panama') || name.includes('baseball cap') || name.includes('bucket hat') ||
+                    name.includes('wide brim') || name.includes('felt hat')) {
+                    return { orderProduct: "Hats" };
+                }
+                
+                // Sunglasses patterns - comprehensive matching
+                if (name.includes('sunglasses') || name.includes('shades') || name.includes('eyewear') ||
+                    name.includes('aviator') || name.includes('wayfarer') || name.includes('ray-ban') ||
+                    name.includes('oversized') || name.includes('cat eye') || name.includes('round sunglasses') ||
+                    name.includes('geometric') || name.includes('gradient lenses')) {
+                    return { orderProduct: "Sunglasses" };
+                }
+                
+                // Perfume patterns - comprehensive matching
+                if (name.includes('perfume') || name.includes('fragrance') || name.includes('eau de') || 
+                    name.includes('cologne') || name.includes('parfum') || name.includes('scent') ||
+                    name.includes('toilette') || name.includes('essence') || name.includes('mist') ||
+                    name.includes('spray')) {
+                    return { orderProduct: "Perfumes" };
+                }
+                
+                // Additional specific product name mappings based on your example
+                if (name.includes('elegant leather handbag') || name.includes('mini stylish bag')) {
+                    return { orderProduct: "Bags" };
+                }
+                
+                // Default to Others (will be filtered out)
+                return { orderProduct: "Others" };
+            },
+
+            displayQueue(queueOrders) {
+                const queueList = document.getElementById('queue-list');
+                const queueCount = document.getElementById('queue-count');
+                
+                console.log(`🎯 Displaying ${queueOrders.length} orders in queue:`, queueOrders);
+                
+                // Count total items across all orders
+                const totalItems = queueOrders.reduce((sum, order) => {
+                    return sum + order.items.reduce((itemSum, item) => itemSum + item.quantity, 0);
+                }, 0);
+                
+                // Update count
+                queueCount.textContent = `${queueOrders.length} ${queueOrders.length === 1 ? 'Order' : 'Orders'} (${totalItems} items)`;
+                
+                if (queueOrders.length === 0) {
+                    queueList.innerHTML = '<div class="no-orders">Queue is empty...</div>';
+                    return;
+                }
+                
+                // Build queue HTML
+                let html = '';
+                queueOrders.forEach((order, orderIndex) => {
+                    // Group items by category and sum quantities
+                    const categoryGroups = {};
+                    order.items.forEach(item => {
+                        if (categoryGroups[item.category]) {
+                            categoryGroups[item.category] += item.quantity;
+                        } else {
+                            categoryGroups[item.category] = item.quantity;
+                        }
+                    });
+                    
+                    // Create category summary (e.g., "2x Bags, 1x Perfumes")
+                    const categorySummary = Object.entries(categoryGroups)
+                        .map(([category, quantity]) => `${quantity}x ${category}`)
+                        .join(', ');
+                    
+                    html += `
+                        <div class="queue-order-item" data-position="${orderIndex + 1}">
+                            <div class="queue-order-header">
+                                <div class="queue-position">#${orderIndex + 1}</div>
+                                <div class="queue-order-id">${order.orderId.slice(-6).toUpperCase()}</div>
+                                <div class="queue-status">${order.status}</div>
+                            </div>
+                            <div class="queue-order-summary">
+                                <div class="queue-categories">${categorySummary}</div>
+                            </div>
+                            <div class="queue-order-details">
+                    `;
+                    
+                    // Add individual items details
+                    order.items.forEach(item => {
+                        html += `
+                            <div class="queue-item-detail">
+                                <span class="item-category">${item.category}</span>
+                                <span class="item-name">${item.productName}</span>
+                                <span class="item-quantity">x${item.quantity}</span>
+                            </div>
+                        `;
+                    });
+                    
+                    html += `
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                queueList.innerHTML = html;
+            },
+            
+            getTimeAgo(date) {
+                const seconds = Math.floor((new Date() - date) / 1000);
+                
+                if (seconds < 60) return `${seconds}s ago`;
+                if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+                if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+                return `${Math.floor(seconds / 86400)}d ago`;
+            },
+            
+            updateConnectionStatus(connected) {
+                if (this.isConnected === connected) return;
+                
+                this.isConnected = connected;
+                const dot = document.getElementById('orders-connection-dot');
+                const text = document.getElementById('orders-connection-text');
+                
+                if (connected) {
+                    dot.classList.add('connected');
+                    text.textContent = 'Live';
+                } else {
+                    dot.classList.remove('connected');
+                    text.textContent = 'Disconnected';
+                }
+            },
+            
+            setBackendURL(url) {
+                this.backendURL = url;
+                localStorage.setItem('backend_url', url);
+                console.log(`🔧 Backend URL set to: ${url}`);
+                this.stopPolling();
+                this.startPolling();
+            }
+        };
+
+        // ==================== ORDER AUTOMATION FUNCTIONS ====================
+        function handleStartOrder(orderId, orderNumber) {
+            console.log(`🚀 Starting automation for Order ${orderNumber} (${orderId})`);
+            
+            // Find the order in current orders
+            const order = ordersManager.currentOrders.find(o => o.orderId === orderId);
+            if (!order) {
+                console.error(`❌ Order ${orderNumber} not found in current orders`);
+                return;
+            }
+            
+            // Update button state
+            const button = document.querySelector(`[data-order-id="${orderId}"]`);
+            if (button) {
+                button.disabled = true;
+                button.innerHTML = '<span>⏳ Processing...</span>';
+            }
+            
+            // Get queue items for this order
+            const queueOrders = ordersManager.currentQueueData || [];
+            const targetOrder = queueOrders.find(o => o.orderId === orderId);
+            
+            if (!targetOrder || !targetOrder.items.length) {
+                console.error(`❌ No queue items found for Order ${orderNumber}`);
+                return;
+            }
+            
+            // Store order processing state
+            window.currentProcessingOrder = {
+                order: targetOrder,
+                orderNumber: orderNumber,
+                currentItemIndex: 0,
+                totalItems: targetOrder.items.length
+            };
+            
+            console.log(`📦 Order ${orderNumber} has ${targetOrder.items.length} items to process`);
+            
+            // Start processing first item
+            processNextQueueItem();
+        }
+        
+        async function processNextQueueItem() {
+            const processingOrder = window.currentProcessingOrder;
+            if (!processingOrder) {
+                console.error('❌ No processing order found');
+                return;
+            }
+            
+            const { order, orderNumber, currentItemIndex, totalItems } = processingOrder;
+            
+            if (currentItemIndex >= totalItems) {
+                console.log(`✅ Order ${orderNumber} completed!`);
+                completeOrderProcessing();
+                return;
+            }
+            
+            const currentItem = order.items[currentItemIndex];
+            console.log(`\n═══════════════════════════════════════════════`);
+            console.log(`🔄 Processing item ${currentItemIndex + 1}/${totalItems}`);
+            console.log(`   Product: ${currentItem.productName}`);
+            console.log(`   Category: ${currentItem.category}`);
+            console.log(`   Quantity: ${currentItem.quantity}`);
+            console.log(`═══════════════════════════════════════════════\n`);
+            
+            // Update queue display to highlight current item
+            updateQueueDisplay(order, orderNumber, currentItemIndex);
+            
+            // AUTOMATION WORKFLOW:
+            // 1. Auto-select category in Orders tab
+            // 2. Auto-select Dijkstra in Advanced tab
+            // 3. Auto-switch to Camera tab
+            // 4. Auto-click Start Camera
+            // 5. Wait 6 seconds WHILE calculating path in camera mode
+            // 6. Auto-click Stop Camera (path already calculated)
+            // 7. Switch to grid mode (shows pre-calculated blue path)
+            // 8. Animate yellow robot along blue path
+            // 9. Complete and move to next
+            
+            await executeCompleteAutomation(currentItem, currentItemIndex, totalItems);
+        }
+        
+        async function executeCompleteAutomation(item, itemIndex, totalItems) {
+            try {
+                // STEP 1: Auto-select product category in Orders tab
+                console.log('📍 Step 1: Auto-selecting category in Orders tab...');
+                await autoSelectCategory(item.category);
+                
+                // STEP 2: Auto-select Dijkstra algorithm in Advanced tab
+                console.log('🧠 Step 2: Auto-selecting Dijkstra algorithm...');
+                await autoSelectDijkstra();
+                
+                // STEP 3: Auto-switch to Camera tab
+                console.log('📷 Step 3: Switching to Camera tab...');
+                await autoSwitchToCameraTab();
+                
+                // STEP 4: Auto-start camera
+                console.log('▶️ Step 4: Starting camera...');
+                await autoStartCamera();
+                
+                // STEP 5: Calculate path WHILE camera is running (in camera mode)
+                console.log('⏱️ Step 5: Camera running - Calculating path with Dijkstra in camera mode...');
+                await autoCalculatePath(item.category); // Calculate NOW while camera is on
+                
+                // Wait remaining time (path calculation takes ~800ms, so wait 5.2s more)
+                console.log('⏱️ Continuing camera for remaining time...');
+                await sleep(5200);
+                
+                // STEP 6: Stop camera (path already calculated and ready)
+                console.log('⏹️ Step 6: Stopping camera (path already calculated)...');
+                await autoStopCamera();
+                
+                // STEP 7: Grid mode now shows the pre-calculated blue path
+                console.log('🗺️ Step 7: Grid mode active - Blue path visible from camera calculation');
+                await sleep(500); // Brief pause to see grid with path
+                
+                // STEP 8: Animate robot along the pre-calculated path
+                console.log('🤖 Step 8: Animating robot delivery along blue path...');
+                await animateRobotDelivery();
+                
+                // STEP 9: Complete this item and move to next
+                console.log(`✅ Step 9: Item ${itemIndex + 1}/${totalItems} completed!\n`);
+                
+                // Move to next item after 1 second pause
+                window.currentProcessingOrder.currentItemIndex++;
+                setTimeout(processNextQueueItem, 1000);
+                
+            } catch (error) {
+                console.error('❌ Automation failed:', error);
+                enhancedESP32Manager.showNotification('Automation failed: ' + error.message, 'error');
+            }
+        }
+        
+        // ==================== AUTOMATION HELPER FUNCTIONS ====================
+        
+        async function autoSelectCategory(category) {
+            return new Promise((resolve) => {
+                // Find and click the category button
+                const categoryButtons = document.querySelectorAll('.item-btn');
+                let targetButton = null;
+                
+                categoryButtons.forEach(btn => {
+                    if (btn.dataset.item === category.toLowerCase()) {
+                        targetButton = btn;
+                    }
+                });
+                
+                if (targetButton) {
+                    // Remove active from all buttons
+                    categoryButtons.forEach(b => b.classList.remove('active'));
+                    // Activate target button
+                    targetButton.classList.add('active');
+                    
+                    // Set global variables
+                    window.selectedItem = category.toLowerCase();
+                    window.itemPoint = predefinedItems[category.toLowerCase()];
+                    
+                    console.log(`   ✓ Category selected: ${category} at position (${window.itemPoint.x}, ${window.itemPoint.y})`);
+                    updateStatus(`Selected ${category} at position (${window.itemPoint.x}, ${window.itemPoint.y})`);
+                    
+                    setTimeout(resolve, 500);
+                } else {
+                    console.error(`   ✗ Category button not found: ${category}`);
+                    resolve();
+                }
+            });
+        }
+        
+        async function autoSelectDijkstra() {
+            return new Promise((resolve) => {
+                // Set algorithm to Dijkstra
+                window.algorithm = 'dijkstra';
+                
+                // Update UI if Advanced tab has algorithm buttons
+                const advancedTab = document.getElementById('advanced-tab');
+                if (advancedTab) {
+                    const dijkstraBtn = advancedTab.querySelector('[onclick*="dijkstra"]');
+                    if (dijkstraBtn) {
+                        dijkstraBtn.click();
+                    }
+                }
+                
+                console.log('   ✓ Dijkstra algorithm selected');
+                updateStatus('Algorithm: Dijkstra');
+                
+                setTimeout(resolve, 500);
+            });
+        }
+        
+        async function autoSwitchToCameraTab() {
+            return new Promise((resolve) => {
+                // Find and click Camera tab
+                const tabs = document.querySelectorAll('.tab');
+                tabs.forEach(tab => {
+                    if (tab.dataset.tab === 'camera') {
+                        tab.click();
+                    }
+                });
+                
+                console.log('   ✓ Switched to Camera tab');
+                
+                setTimeout(resolve, 500);
+            });
+        }
+        
+        async function autoStartCamera() {
+            return new Promise((resolve) => {
+                const startCameraBtn = document.getElementById('start-camera');
+                if (startCameraBtn) {
+                    startCameraBtn.click();
+                    console.log('   ✓ Camera started');
+                    updateStatus('Camera started - Detecting obstacles...');
+                } else {
+                    console.warn('   ⚠️ Start Camera button not found');
+                }
+                
+                setTimeout(resolve, 500);
+            });
+        }
+        
+        async function autoStopCamera() {
+            return new Promise((resolve) => {
+                console.log('   📷 Stopping camera and switching to grid mode...');
+                
+                const stopCameraBtn = document.getElementById('stop-camera');
+                if (stopCameraBtn) {
+                    stopCameraBtn.click();
+                    
+                    // CRITICAL: Stop camera animation completely
+                    if (animationFrameId) {
+                        cancelAnimationFrame(animationFrameId);
+                        animationFrameId = null;
+                    }
+                    
+                    // Stop video stream
+                    if (video.srcObject) {
+                        video.srcObject.getTracks().forEach(track => track.stop());
+                    }
+                    
+                    // Switch to grid mode (no camera overlay)
+                    window.inputMode = 'grid';
+                    
+                    // Redraw clean grid WITH the pre-calculated path
+                    // The path was already calculated in camera mode, now just display it
+                    drawGrid(); // Shows: green dot, purple square (current item), red dot
+                    
+                    if (window.path && window.path.length > 0) {
+                        drawPath(); // Shows: blue path (already calculated)
+                        console.log(`   ✓ Camera stopped - Grid shows calculated blue path (${window.path.length} steps)`);
+                    } else {
+                        console.warn('   ⚠️ Camera stopped but no path found!');
+                    }
+                    
+                    updateStatus('Grid mode active - Path ready for robot');
+                } else {
+                    console.warn('   ⚠️ Stop Camera button not found');
+                }
+                
+                setTimeout(resolve, 500);
+            });
+        }
+        
+        async function autoCalculatePath(category) {
+            return new Promise((resolve) => {
+                // Get item location
+                const itemLocation = predefinedItems[category.toLowerCase()];
+                
+                if (!itemLocation) {
+                    console.error(`   ✗ No location found for category: ${category}`);
+                    resolve();
+                    return;
+                }
+                
+                console.log(`\n🗺️ ═══════════════════════════════════════`);
+                console.log(`   PATH CALCULATION STARTING`);
+                console.log(`   Category: ${category}`);
+                console.log(`   🟢 Start: (${startPoint.x}, ${startPoint.y})`);
+                console.log(`   🟣 ${category}: (${itemLocation.x}, ${itemLocation.y})`);
+                console.log(`   🔴 End: (${endPoint.x}, ${endPoint.y})`);
+                console.log(`🗺️ ═══════════════════════════════════════\n`);
+                
+                // CRITICAL: Set ALL global variables BEFORE calling findPath()
+                window.itemPoint = itemLocation;
+                window.selectedItem = category.toLowerCase();
+                window.algorithm = 'dijkstra';
+                window.startPoint = {x: 1, y: 1};
+                window.endPoint = {x: 7, y: 7};
+                
+                // Update grid to mark the item location
+                const gridY = itemLocation.y;
+                const gridX = itemLocation.x;
+                if (grid[gridY] && grid[gridY][gridX]) {
+                    grid[gridY][gridX].isItem = true;
+                    grid[gridY][gridX].itemType = category.toLowerCase();
+                    console.log(`   ✓ Grid updated: Cell(${gridX},${gridY}) marked as item: ${category}`);
+                }
+                
+                // Clear previous path
+                window.path = [];
+                window.completedPath = [];
+                
+                console.log(`   🔍 Calling findPath()...`);
+                console.log(`      - selectedItem: ${window.selectedItem}`);
+                console.log(`      - itemPoint: (${window.itemPoint.x}, ${window.itemPoint.y})`);
+                console.log(`      - algorithm: ${window.algorithm}`);
+                
+                // Call EXISTING findPath() - it will calculate: Start → Item → End
+                findPath();
+                
+                // Verify path was calculated
+                setTimeout(() => {
+                    console.log(`\n   📊 PATH CALCULATION RESULT:`);
+                    if (window.path && window.path.length > 0) {
+                        console.log(`   ✅ SUCCESS!`);
+                        console.log(`   📏 Total steps: ${window.path.length}`);
+                        console.log(`   🔵 Path: Start(${window.path[0].x},${window.path[0].y}) → ... → End(${window.path[window.path.length-1].x},${window.path[window.path.length-1].y})`);
+                        
+                        // Check if path goes through item
+                        const goesThroughItem = window.path.some(p => p.x === itemLocation.x && p.y === itemLocation.y);
+                        console.log(`   ${goesThroughItem ? '✅' : '❌'} Path goes through ${category}? ${goesThroughItem}`);
+                        
+                        updateStatus(`Path: Start → ${category} → End (${window.path.length} steps)`);
+                    } else {
+                        console.error(`   ❌ FAILED - No path calculated!`);
+                        console.error(`      - window.path:`, window.path);
+                        console.error(`      - window.selectedItem:`, window.selectedItem);
+                        console.error(`      - window.itemPoint:`, window.itemPoint);
+                    }
+                    console.log(`🗺️ ═══════════════════════════════════════\n`);
+                    resolve();
+                }, 800);
+            });
+        }
+        
+        async function animateRobotDelivery() {
+            return new Promise(async (resolve) => {
+                if (!window.path || window.path.length === 0) {
+                    console.error('\n❌ ROBOT ANIMATION FAILED - No path available!');
+                    console.error('   window.path:', window.path);
+                    console.error('   window.itemPoint:', window.itemPoint);
+                    console.error('   window.selectedItem:', window.selectedItem);
+                    resolve();
+                    return;
+                }
+                
+                console.log('\n🤖 ═══════════════════════════════════════');
+                console.log('   ROBOT ANIMATION STARTING');
+                console.log(`   📍 Total steps: ${window.path.length}`);
+                console.log(`   🟢 Starting at: (${window.path[0].x}, ${window.path[0].y})`);
+                console.log(`   🔴 Ending at: (${window.path[window.path.length-1].x}, ${window.path[window.path.length-1].y})`);
+                
+                // Show first 10 and last 10 path points for verification
+                console.log(`   📊 Path preview (first 5): ${window.path.slice(0, 5).map(p => `(${p.x},${p.y})`).join(' → ')}`);
+                console.log(`   📊 Path preview (last 5): ${window.path.slice(-5).map(p => `(${p.x},${p.y})`).join(' → ')}`);
+                console.log('🤖 ═══════════════════════════════════════\n');
+                
+                updateStatus('🤖 Robot moving along blue path...');
+                
+                // Animate robot moving along each point in the calculated path
+                for (let i = 0; i < window.path.length; i++) {
+                    const point = window.path[i];
+                    
+                    // Update robot position on canvas
+                    window.robotPosition = point;
+                    
+                    console.log(`     🟡 Step ${i + 1}/${window.path.length} → (${point.x}, ${point.y})`);
+                    
+                    // Redraw entire grid with robot at new position
+                    drawGrid(); // This now draws the yellow robot dot with glow
+                    
+                    // Wait 250ms between steps (smooth visible movement)
+                    await sleep(250);
+                    
+                    // Log progress every 3 steps for visibility
+                    if (i % 3 === 0 || i === window.path.length - 1) {
+                        console.log(`     🟡 Step ${i + 1}/${window.path.length} → Position(${point.x}, ${point.y})`);
+                    }
+                }
+                
+                console.log('\n   ✅ Robot reached destination!');
+                console.log('   🎯 Delivery complete!\n');
+                updateStatus('✅ Delivery completed!');
+                
+                // Clear robot position and prepare for next item
+                setTimeout(() => {
+                    window.robotPosition = null; // Remove robot
+                    window.path = [];
+                    window.completedPath = [];
+                    window.itemPoint = null;
+                    window.selectedItem = null;
+                    
+                    // Redraw clean grid
+                    drawGrid();
+                    
+                    console.log('   🧹 Cleared grid for next item');
+                    resolve();
+                }, 800);
+            });
+        }
+        
+        // Helper: Sleep function
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+        
+        function showItemDispatchedAnimation(item, callback) {
+            console.log(`Showing dispatched animation for ${item.productName}`);
+            
+            // Find the current item in queue display and animate it
+            const queueItems = document.querySelectorAll('.queue-item-detail');
+            const currentItemElement = Array.from(queueItems).find(el => 
+                el.querySelector('.item-name').textContent.includes('*')
+            );
+            
+            if (currentItemElement) {
+                // Add dispatched styling
+                currentItemElement.style.background = 'rgba(39, 174, 96, 0.3)';
+                currentItemElement.style.borderLeft = '3px solid #27ae60';
+                
+                // Update the content to show "Dispatched"
+                const itemName = currentItemElement.querySelector('.item-name');
+                const originalText = itemName.textContent.replace(' *', '');
+                itemName.innerHTML = `${originalText} <span style="color: #27ae60; font-weight: bold;">✓ Dispatched</span>`;
+                
+                // Show for 3 seconds then fade out
+                setTimeout(() => {
+                    currentItemElement.style.opacity = '0';
+                    currentItemElement.style.transform = 'translateX(-100%)';
+                    currentItemElement.style.transition = 'all 0.5s ease';
+                    
+                    setTimeout(() => {
+                        if (callback) callback();
+                    }, 500);
+                }, 3000);
+            } else {
+                // If animation element not found, just proceed
+                setTimeout(() => {
+                    if (callback) callback();
+                }, 1000);
+            }
+        }
+        
+        function updateQueueDisplay(order, orderNumber, currentItemIndex) {
+            const queueList = document.getElementById('queue-list');
+            const queueCount = document.getElementById('queue-count');
+            
+            // Get all queue orders to show full queue context
+            const allQueueOrders = ordersManager.currentQueueData || [];
+            
+            // Build full queue display showing all orders
+            let html = '';
+            let totalOrdersInQueue = 0;
+            let totalItemsInQueue = 0;
+            
+            allQueueOrders.forEach((queueOrder, orderIndex) => {
+                const isProcessingOrder = queueOrder.orderId === order.orderId;
+                
+                if (isProcessingOrder) {
+                    // Show only remaining items for processing order
+                    const remainingItems = order.items.slice(currentItemIndex);
+                    if (remainingItems.length > 0) {
+                        totalOrdersInQueue++;
+                        totalItemsInQueue += remainingItems.length;
+                        
+                        const categorySummary = remainingItems
+                            .map(item => `${item.quantity}x ${item.category}`)
+                            .join(', ');
+                        
+                        html += `
+                            <div class="queue-order-item" data-position="${totalOrdersInQueue}" style="border-left-color: #4ecca3;">
+                                <div class="queue-order-header">
+                                    <div class="queue-position" style="background: #4ecca3;">#${totalOrdersInQueue}</div>
+                                    <div class="queue-order-id">${queueOrder.orderId.slice(-6).toUpperCase()}</div>
+                                    <div class="queue-status" style="background: rgba(78, 204, 163, 0.2); color: #4ecca3;">Processing</div>
+                                </div>
+                                <div class="queue-order-summary">
+                                    <div class="queue-categories" style="color: #4ecca3;">${categorySummary}</div>
+                                </div>
+                                <div class="queue-order-details">
+                        `;
+                        
+                        remainingItems.forEach((item, index) => {
+                            const isCurrentItem = index === 0; // First remaining item is current
+                            const itemStyle = isCurrentItem ? 
+                                'background: rgba(78, 204, 163, 0.2); border-left: 3px solid #4ecca3; padding-left: 8px;' : 
+                                'opacity: 0.7;';
+                            
+                            html += `
+                                <div class="queue-item-detail" style="${itemStyle}">
+                                    <span class="item-category">${item.category}</span>
+                                    <span class="item-name">${item.productName}${isCurrentItem ? ' *' : ''}</span>
+                                    <span class="item-quantity">x${item.quantity}</span>
+                                </div>
+                            `;
+                        });
+                        
+                        html += `
+                                </div>
+                            </div>
+                        `;
+                    }
+                } else {
+                    // Show complete order for non-processing orders
+                    if (queueOrder.items.length > 0) {
+                        totalOrdersInQueue++;
+                        totalItemsInQueue += queueOrder.items.reduce((sum, item) => sum + item.quantity, 0);
+                        
+                        const categoryGroups = {};
+                        queueOrder.items.forEach(item => {
+                            if (categoryGroups[item.category]) {
+                                categoryGroups[item.category] += item.quantity;
+                            } else {
+                                categoryGroups[item.category] = item.quantity;
+                            }
+                        });
+                        
+                        const categorySummary = Object.entries(categoryGroups)
+                            .map(([category, quantity]) => `${quantity}x ${category}`)
+                            .join(', ');
+                        
+                        html += `
+                            <div class="queue-order-item" data-position="${totalOrdersInQueue}">
+                                <div class="queue-order-header">
+                                    <div class="queue-position">#${totalOrdersInQueue}</div>
+                                    <div class="queue-order-id">${queueOrder.orderId.slice(-6).toUpperCase()}</div>
+                                    <div class="queue-status">Waiting</div>
+                                </div>
+                                <div class="queue-order-summary">
+                                    <div class="queue-categories">${categorySummary}</div>
+                                </div>
+                                <div class="queue-order-details">
+                        `;
+                        
+                        queueOrder.items.forEach(item => {
+                            html += `
+                                <div class="queue-item-detail">
+                                    <span class="item-category">${item.category}</span>
+                                    <span class="item-name">${item.productName}</span>
+                                    <span class="item-quantity">x${item.quantity}</span>
+                                </div>
+                            `;
+                        });
+                        
+                        html += `
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
+            });
+            
+            // Update queue count
+            queueCount.textContent = `${totalOrdersInQueue} ${totalOrdersInQueue === 1 ? 'Order' : 'Orders'} (${totalItemsInQueue} items)`;
+            
+            if (totalOrdersInQueue === 0) {
+                queueList.innerHTML = '<div class="no-orders">Queue is empty...</div>';
+            } else {
+                queueList.innerHTML = html;
+            }
+        }
+        
+        function selectCategoryInOrderManagement(category, callback) {
+            console.log(`Selecting ${category} in Order Management`);
+            
+            // Find and click the category button
+            const categoryButton = Array.from(document.querySelectorAll('.item-btn'))
+                .find(btn => btn.textContent.includes(category));
+            
+            if (categoryButton) {
+                console.log(`Clicking ${category} button`);
+                categoryButton.click();
+                
+                // Visual feedback
+                const originalBackground = categoryButton.style.background;
+                categoryButton.style.background = '#4ecca3';
+                categoryButton.style.transform = 'scale(1.05)';
+                
+                setTimeout(() => {
+                    categoryButton.style.background = originalBackground;
+                    categoryButton.style.transform = '';
+                    if (callback) callback();
+                }, 1500);
+            } else {
+                console.error(`Category button for ${category} not found`);
+                if (callback) callback();
+            }
+        }
+        
+        function generateAndShowPath(category, callback) {
+            console.log(`Generating path to ${category}`);
+            
+            // Get the predefined path coordinates
+            const pathCoordinates = getCategoryPath(category);
+            if (!pathCoordinates || pathCoordinates.length === 0) {
+                console.error(`No path found for category: ${category}`);
+                if (callback) callback();
+                return;
+            }
+            
+            console.log(`Drawing ${pathCoordinates.length} waypoints for ${category}`);
+            
+            // Clear any existing paths and redraw grid
+            drawGrid();
+            
+            // Draw bright green path lines connecting all waypoints
+            drawFullPath(pathCoordinates);
+            
+            // Auto-click Start Delivery Cycle after showing path
+            setTimeout(() => {
+                clickStartDeliveryCycle(() => {
+                    if (callback) callback();
+                });
+            }, 1000);
+        }
+        
+        function drawFullPath(pathCoordinates) {
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            if (pathCoordinates.length < 2) return;
+            
+            // Set bright green path style
+            ctx.strokeStyle = '#00ff88';
+            ctx.lineWidth = 4;
+            ctx.setLineDash([]);
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            
+            // Draw connected path
+            ctx.beginPath();
+            
+            // Move to start point
+            const startPoint = pathCoordinates[0];
+            const startX = startPoint.x * gridSize + gridSize / 2;
+            const startY = startPoint.y * gridSize + gridSize / 2;
+            ctx.moveTo(startX, startY);
+            
+            // Draw lines to each subsequent point
+            for (let i = 1; i < pathCoordinates.length; i++) {
+                const point = pathCoordinates[i];
+                const x = point.x * gridSize + gridSize / 2;
+                const y = point.y * gridSize + gridSize / 2;
+                ctx.lineTo(x, y);
+            }
+            
+            ctx.stroke();
+            
+            // Add waypoint markers
+            ctx.fillStyle = '#00ff88';
+            pathCoordinates.forEach((point, index) => {
+                const x = point.x * gridSize + gridSize / 2;
+                const y = point.y * gridSize + gridSize / 2;
+                
+                if (index === 0 || index === pathCoordinates.length - 1) {
+                    // Larger markers for start and end
+                    ctx.beginPath();
+                    ctx.arc(x, y, 4, 0, 2 * Math.PI);
+                    ctx.fill();
+                } else {
+                    // Small markers for waypoints
+                    ctx.beginPath();
+                    ctx.arc(x, y, 2, 0, 2 * Math.PI);
+                    ctx.fill();
+                }
+            });
+        }
+        
+        function findStartPosition() {
+            for (let y = 0; y < rows; y++) {
+                for (let x = 0; x < cols; x++) {
+                    if (grid[y][x].isStart) {
+                        return { x, y };
+                    }
+                }
+            }
+            return null;
+        }
+        
+        function findEndPosition() {
+            for (let y = 0; y < rows; y++) {
+                for (let x = 0; x < cols; x++) {
+                    if (grid[y][x].isEnd) {
+                        return { x, y };
+                    }
+                }
+            }
+            return null;
+        }
+        
+        function findCategoryPosition(category) {
+            // Map categories to their positions on the grid (based on predefined locations)
+            const categoryPositions = {
+                'Hats': { x: 4, y: 4 }, // Hat position
+                'Bags': { x: 6, y: 4 }, // Bag position  
+                'Perfumes': { x: 4, y: 6 }, // Per position
+                'Sunglasses': { x: 6, y: 6 } // Sun position
+            };
+            
+            return categoryPositions[category] || null;
+        }
+        
+        function drawPathLine(from, to, color) {
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 3;
+            ctx.setLineDash([]);
+            
+            const fromX = from.x * gridSize + gridSize / 2;
+            const fromY = from.y * gridSize + gridSize / 2;
+            const toX = to.x * gridSize + gridSize / 2;
+            const toY = to.y * gridSize + gridSize / 2;
+            
+            ctx.beginPath();
+            ctx.moveTo(fromX, fromY);
+            ctx.lineTo(toX, toY);
+            ctx.stroke();
+        }
+        
+        function clickStartDeliveryCycle(callback) {
+            console.log(`Auto-clicking Start Delivery Cycle`);
+            
+            const startButton = document.getElementById('start-delivery');
+            if (startButton) {
+                startButton.click();
+                
+                // Show notification
+                enhancedESP32Manager.showNotification('Delivery cycle started!', 'success');
+                
+                setTimeout(() => {
+                    if (callback) callback();
+                }, 500);
+            } else {
+                console.error('Start Delivery button not found');
+                if (callback) callback();
+            }
+        }
+        
+        function simulateDeliveryPath(item, callback) {
+            console.log(`Starting delivery simulation for ${item.productName}`);
+            
+            // Get the predefined path for this category
+            const pathCoordinates = getCategoryPath(item.category);
+            if (!pathCoordinates || pathCoordinates.length === 0) {
+                console.error(`No path found for category: ${item.category}`);
+                if (callback) callback();
+                return;
+            }
+            
+            // Create or show robot indicator (yellow dot)
+            let robotDot = document.getElementById('robot-indicator');
+            if (!robotDot) {
+                // Find the visualization container to append the robot dot to
+                const visualizationDiv = document.querySelector('.visualization');
+                robotDot = document.createElement('div');
+                robotDot.id = 'robot-indicator';
+                robotDot.className = 'robot-indicator';
+                visualizationDiv.appendChild(robotDot);
+            }
+            
+            const canvas = document.getElementById('canvas');
+            const canvasRect = canvas.getBoundingClientRect();
+            
+            // Position robot at canvas relative position
+            robotDot.style.position = 'absolute';
+            robotDot.style.display = 'block';
+            robotDot.style.zIndex = '1000';
+            
+            console.log(`Robot following ${pathCoordinates.length} waypoints for ${item.category}`);
+            
+            // Animate robot along the path
+            animateRobotAlongPath(robotDot, pathCoordinates, canvasRect, () => {
+                console.log(`Product dispatched at destination: ${item.productName}`);
+                enhancedESP32Manager.showNotification(`${item.productName} dispatched!`, 'success');
+                
+                // Hide robot dot and complete
+                setTimeout(() => {
+                    robotDot.style.display = 'none';
+                    if (callback) callback();
+                }, 1000);
+            });
+        }
+        
+        function getCategoryPath(category) {
+            // Return the exact path coordinates as specified
+            const paths = {
+                'Hats': [
+                    {x: 1, y: 1}, {x: 1, y: 2}, {x: 1, y: 3}, {x: 1, y: 4},
+                    {x: 2, y: 4}, {x: 3, y: 4}, {x: 4, y: 4}, // HAT PICKUP
+                    {x: 4, y: 3}, {x: 5, y: 3}, {x: 6, y: 3}, {x: 7, y: 3},
+                    {x: 7, y: 4}, {x: 7, y: 5}, {x: 7, y: 6}, {x: 7, y: 7} // END
+                ],
+                'Perfumes': [
+                    {x: 1, y: 1}, {x: 1, y: 2}, {x: 1, y: 3}, {x: 1, y: 4},
+                    {x: 1, y: 5}, {x: 1, y: 6}, {x: 2, y: 6}, {x: 3, y: 6},
+                    {x: 4, y: 6}, // PERFUME PICKUP
+                    {x: 5, y: 6}, {x: 5, y: 7}, {x: 6, y: 7}, {x: 7, y: 7} // END
+                ],
+                'Bags': [
+                    {x: 1, y: 1}, {x: 2, y: 1}, {x: 3, y: 1}, {x: 4, y: 1},
+                    {x: 5, y: 1}, {x: 6, y: 1}, {x: 6, y: 2}, {x: 6, y: 3},
+                    {x: 6, y: 4}, // BAG PICKUP
+                    {x: 6, y: 5}, {x: 6, y: 7}, {x: 7, y: 7} // END
+                ],
+                'Sunglasses': [
+                    {x: 1, y: 1}, {x: 1, y: 2}, {x: 1, y: 3}, {x: 1, y: 4},
+                    {x: 1, y: 5}, {x: 1, y: 6}, {x: 1, y: 7}, {x: 2, y: 7},
+                    {x: 3, y: 7}, {x: 4, y: 7}, {x: 5, y: 7}, {x: 6, y: 7},
+                    {x: 6, y: 6}, // SUNGLASSES PICKUP
+                    {x: 6, y: 7}, {x: 7, y: 7} // END
+                ]
+            };
+            
+            return paths[category] || [];
+        }
+        
+        function animateRobotAlongPath(robotDot, pathCoordinates, canvasRect, callback) {
+            let currentIndex = 0;
+            const totalSteps = pathCoordinates.length;
+            const stepDuration = 5000 / totalSteps; // 5 seconds total, divided by number of steps
+            
+            function moveToNextPoint() {
+                if (currentIndex >= totalSteps) {
+                    if (callback) callback();
+                    return;
+                }
+                
+                const point = pathCoordinates[currentIndex];
+                // Position relative to canvas, not document
+                const x = point.x * gridSize + gridSize / 2 - 10;
+                const y = point.y * gridSize + gridSize / 2 - 10;
+                
+                robotDot.style.left = x + 'px';
+                robotDot.style.top = y + 'px';
+                
+                console.log(`Robot at (${point.x}, ${point.y})`);
+                currentIndex++;
+                
+                setTimeout(moveToNextPoint, stepDuration);
+            }
+            
+            moveToNextPoint();
+        }
+        
+        function completeOrderProcessing() {
+            const processingOrder = window.currentProcessingOrder;
+            if (!processingOrder) return;
+            
+            const { order, orderNumber } = processingOrder;
+            
+            console.log(`Order ${orderNumber} completely processed!`);
+            
+            // Update button state
+            const button = document.querySelector(`[data-order-id="${order.orderId}"]`);
+            if (button) {
+                button.disabled = false;
+                button.innerHTML = '<span>Completed</span>';
+                button.style.background = 'linear-gradient(135deg, #27ae60, #2ecc71)';
+                
+                // Hide "Completed" button after 2.5 seconds
+                setTimeout(() => {
+                    if (button && button.innerHTML.includes('Completed')) {
+                        button.style.display = 'none';
+                    }
+                }, 2500);
+            }
+            
+            // Remove completed order from queue data
+            if (ordersManager.currentQueueData) {
+                ordersManager.currentQueueData = ordersManager.currentQueueData.filter(
+                    queueOrder => queueOrder.orderId !== order.orderId
+                );
+                console.log(`Removed completed order ${orderNumber} from queue`);
+            }
+            
+            // Show completion notification
+            enhancedESP32Manager.showNotification(`Order ${orderNumber} completed successfully!`, 'success');
+            
+            // Clear processing state
+            window.currentProcessingOrder = null;
+            
+            // Update queue display immediately to show removal
+            setTimeout(() => {
+                const queueList = document.getElementById('queue-list');
+                const queueCount = document.getElementById('queue-count');
+                
+                if (ordersManager.currentQueueData && ordersManager.currentQueueData.length > 0) {
+                    // Refresh queue display with remaining orders
+                    ordersManager.displayQueue(ordersManager.currentQueueData);
+                } else {
+                    // Show empty queue
+                    queueCount.textContent = '0 Orders (0 items)';
+                    queueList.innerHTML = '<div class="no-orders">Queue is empty...</div>';
+                }
+            }, 2000);
+        }
+
+        // ==================== TEST FUNCTIONS ====================
+        function testOrderQueue() {
+            console.log('🧪 Testing Order Queue with sample data...');
+            
+            const now = new Date();
+            const testOrders = [
+                {
+                    orderId: "order_5A0931", // Order 1: 2x Bags (should be #1 in queue)
+                    status: "Order Placed",
+                    date: new Date(now.getTime() - (22 * 60 * 60 * 1000)), // 22 hours ago
+                    items: [
+                        {
+                            name: "Elegant Leather Handbag with Gold Clasp",
+                            quantity: 1,
+                            size: "One Size",
+                            price: 2999
+                        },
+                        {
+                            name: "Women White Mini Stylish Bag",
+                            quantity: 1,
+                            size: "One Size", 
+                            price: 1599
+                        }
+                    ]
+                },
+                {
+                    orderId: "order_82D1DD", // Order 2: 1x Bag + 1x Perfume (should be #2 in queue)
+                    status: "Order Placed", 
+                    date: new Date(now.getTime() - (21 * 60 * 60 * 1000)), // 21 hours ago
+                    items: [
+                        {
+                            name: "Women's Subtle Glow Eau de Parfum - Sheer Light",
+                            quantity: 1,
+                            size: "One Size",
+                            price: 1299
+                        },
+                        {
+                            name: "Designer Canvas Tote Bag",
+                            quantity: 1,
+                            size: "One Size",
+                            price: 899
+                        }
+                    ]
+                },
+                {
+                    orderId: "order_9F3ABC", // Order 3: Mixed items (should be #3 in queue)
+                    status: "Order Placed",
+                    date: new Date(now.getTime() - (20 * 60 * 60 * 1000)), // 20 hours ago
+                    items: [
+                        {
+                            name: "Unisex Aviator Sunglasses",
+                            quantity: 2,
+                            size: "One Size",
+                            price: 1199
+                        },
+                        {
+                            name: "Wide Brim Felt Hat",
+                            quantity: 1,
+                            size: "One Size",
+                            price: 1349
+                        },
+                        {
+                            name: "Women T-shirt", // This will be ignored (Others category)
+                            quantity: 1,
+                            size: "M",
+                            price: 599
+                        }
+                    ]
+                }
+            ];
+            
+            // Process the test orders
+            OrderTracking.processOrders(testOrders);
+        }
+
+        // Make test function globally available
+        window.testOrderQueue = testOrderQueue;
+
+        // ==================== INITIALIZATION ====================
+        document.addEventListener('DOMContentLoaded', () => {
+            enhancedESP32Manager.init();
+            initializeGrid();
+            initializeTabs();
+            addEnhancedEventListeners();
+            
+            // Initialize real-time orders manager
+            ordersManager.init();
+            
+            // Replace the original ESP32 manager with enhanced one
+            window.esp32Manager = enhancedESP32Manager;
+            
+            // Original event listeners
+            document.getElementById('toggle-controls').addEventListener('click', () => {
+                const controlsPanel = document.getElementById('controls-panel');
+                const toggleButton = document.getElementById('toggle-controls');
+                
+                if (controlsPanel.classList.contains('hidden')) {
+                    controlsPanel.classList.remove('hidden');
+                    toggleButton.textContent = 'Hide Controls';
+                } else {
+                    controlsPanel.classList.add('hidden');
+                    toggleButton.textContent = 'Show Controls';
+                }
+            });
+            
+            document.getElementById('auto-mode').addEventListener('click', () => {
+                automationMode = 'auto';
+                document.getElementById('auto-mode').classList.add('active');
+                document.getElementById('manual-mode-btn').classList.remove('active');
+                document.getElementById('manual-controls').style.display = 'none';
+                updateStatus('Auto mode enabled. Set points to automatically find path and send commands.');
+            });
+            
+            document.getElementById('manual-mode-btn').addEventListener('click', () => {
+                automationMode = 'manual';
+                document.getElementById('auto-mode').classList.remove('active');
+                document.getElementById('manual-mode-btn').classList.add('active');
+                document.getElementById('manual-controls').style.display = 'block';
+                updateStatus('Manual mode enabled. Use controls to operate the robot.');
+            });
+            
+            document.querySelectorAll('.item-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.item-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    selectedItem = btn.dataset.item;
+                    itemPoint = predefinedItems[selectedItem];
+                    updateStatus(`Selected ${selectedItem} at position (${itemPoint.x}, ${itemPoint.y})`);
+                    
+                    if (automationMode === 'auto' && startPoint && endPoint && enhancedESP32Manager.isConnected) {
+                        setTimeout(automatePathfinding, 500);
+                    }
+                });
+            });
+            
+            document.getElementById('set-start').addEventListener('click', () => {
+                isSettingStart = true;
+                isSettingEnd = false;
+                isSettingItem = false;
+                updateStatus('Click on a cell to set the start point');
+            });
+            
+            document.getElementById('set-end').addEventListener('click', () => {
+                isSettingStart = false;
+                isSettingEnd = true;
+                isSettingItem = false;
+                updateStatus('Click on a cell to set the end point');
+            });
+            
+            document.getElementById('reset').addEventListener('click', () => {
+                itemPoint = null;
+                selectedItem = null;
+                document.querySelectorAll('.item-btn').forEach(b => b.classList.remove('active'));
+                initializeGrid();
+            });
+            
+            document.getElementById('clear-obstacles').addEventListener('click', () => {
+                for (let y = 0; y < rows; y++) {
+                    for (let x = 0; x < cols; x++) {
+                        if (!grid[y][x].isStart && !grid[y][x].isEnd && !grid[y][x].isItem) {
+                            grid[y][x].isWall = false;
+                        }
+                    }
+                }
+                drawGrid();
+                updateStatus('Obstacles cleared.');
+            });
+            
+            document.getElementById('visualize').addEventListener('click', () => {
+                if (startPoint && endPoint) {
+                    findPath();
+                    if (inputMode === 'manual') {
+                        drawGrid();
+                    }
+                } else {
+                    updateStatus('Please set both start and end points first.');
+                }
+            });
+
+            document.getElementById('wifi-mode').addEventListener('click', () => {
+                document.getElementById('wifi-mode').classList.add('active');
+                document.getElementById('bluetooth-mode').classList.remove('active');
+                document.getElementById('wifi-settings').style.display = 'block';
+                document.getElementById('bluetooth-settings').style.display = 'none';
+                updateStatus('WiFi mode selected. Enter ESP32 details to connect.');
+            });
+
+            document.getElementById('bluetooth-mode').addEventListener('click', () => {
+                document.getElementById('wifi-mode').classList.remove('active');
+                document.getElementById('bluetooth-mode').classList.add('active');
+                document.getElementById('wifi-settings').style.display = 'none';
+                document.getElementById('bluetooth-settings').style.display = 'block';
+                updateStatus('Bluetooth mode selected. Click connect to pair with ESP32.');
+            });
+
+            document.getElementById('sensitivity').addEventListener('input', (e) => {
+                sensitivity = parseInt(e.target.value);
+            });
+
+            document.getElementById('start-camera').addEventListener('click', startCamera);
+
+            document.getElementById('connect-wifi').addEventListener('click', () => {
+                enhancedESP32Manager.connectWiFi().then(connected => {
+                    if (connected && automationMode === 'auto' && startPoint && endPoint && selectedItem) {
+                        setTimeout(() => {
+                            enhancedESP32Manager.startDeliveryCycle(selectedItem, startPoint, endPoint);
+                        }, 1000);
+                    }
+                });
+            });
+            
+            document.getElementById('connect-bluetooth').addEventListener('click', connectToESP32Bluetooth);
+            document.getElementById('send-commands').addEventListener('click', sendCommandsToESP32);
+
+            document.addEventListener('click', (e) => {
+                if (e.target.classList.contains('manual-btn')) {
+                    const command = e.target.dataset.command;
+                    enhancedESP32Manager.sendCommand(command);
+                }
+                // Handle Start Order button clicks
+                if (e.target.classList.contains('start-order-btn')) {
+                    const orderId = e.target.dataset.orderId;
+                    const orderNumber = e.target.dataset.orderNumber;
+                    handleStartOrder(orderId, orderNumber);
+                }
+            });
+
+            canvas.addEventListener('mousedown', (e) => {
+                handleCanvasClick(e);
+                isDragging = true;
+            });
+
+            canvas.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                handleCanvasClick(e);
+            });
+
+            canvas.addEventListener('mouseup', () => {
+                isDragging = false;
+            });
+
+            canvas.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                const touch = e.touches[0];
+                const mouseEvent = new MouseEvent('mousedown', {
+                    clientX: touch.clientX,
+                    clientY: touch.clientY
+                });
+                canvas.dispatchEvent(mouseEvent);
+            });
+
+            canvas.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                const touch = e.touches[0];
+                const mouseEvent = new MouseEvent('mousemove', {
+                    clientX: touch.clientX,
+                    clientY: touch.clientY
+                });
+                canvas.dispatchEvent(mouseEvent);
+            });
+
+            canvas.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                const mouseEvent = new MouseEvent('mouseup', {});
+                canvas.dispatchEvent(mouseEvent);
+            });
+            
+            // Backend URL configuration
+            document.getElementById('update-backend-url').addEventListener('click', () => {
+                const backendURL = document.getElementById('backend-url').value.trim();
+                if (backendURL) {
+                    ordersManager.setBackendURL(backendURL);
+                    enhancedESP32Manager.showNotification('Backend URL updated successfully!', 'success');
+                } else {
+                    enhancedESP32Manager.showNotification('Please enter a valid backend URL', 'error');
+                }
+            });
+            
+            // Load saved backend URL from localStorage
+            const savedBackendURL = localStorage.getItem('backend_url');
+            if (savedBackendURL) {
+                document.getElementById('backend-url').value = savedBackendURL;
+                ordersManager.backendURL = savedBackendURL;
+            }
+        });
+    </script>
+</body>
+</html>
